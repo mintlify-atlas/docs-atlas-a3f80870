@@ -1,0 +1,290 @@
+---
+title: System Architecture
+description: Overview of Yokai Septet Online's client-server architecture
+---
+
+## Architecture Overview
+
+Yokai Septet Online is built as a full-stack application with a clear separation between client and server components. The application uses real-time websocket communication to enable multiplayer card game functionality.
+
+### High-Level Structure
+
+```
+yokai-septet-online/
+├── client/          # React + Vite frontend
+└── server/          # Node.js + Express backend
+```
+
+## Client Architecture
+
+The client is a React application built with TypeScript and Vite, providing a fast development experience with hot module replacement (HMR).
+
+### Technology Stack
+
+- **React 18.3.1** - UI library
+- **TypeScript 5.6.2** - Type safety
+- **Vite 6.0.1** - Build tool and dev server
+- **Material-UI (MUI) 6.1.10** - Component library
+- **Socket.io-client 4.8.1** - Real-time communication
+- **React Router 7.0.2** - Client-side routing
+
+### Client Structure
+
+<CodeGroup>
+```plaintext Main Directories
+src/
+├── pages/
+│   ├── Home/         # Landing page
+│   ├── Room/         # Lobby and room management
+│   └── Game/         # Game play components
+├── providers/
+│   ├── SocketProvider.tsx    # WebSocket connection
+│   ├── UserProvider.tsx      # User state management
+│   ├── GameProvider.tsx      # Game state management
+│   └── MainProvider.tsx      # Root provider
+├── utils/
+│   ├── cardHelper.tsx        # Card utilities
+│   ├── constants.tsx         # Game constants
+│   └── storageHelper.tsx     # Local storage
+└── types.ts          # TypeScript definitions
+```
+
+```tsx Socket Connection
+// client/src/providers/SocketProvider.tsx
+import { io } from "socket.io-client";
+
+const socket = io("ws://localhost:3002", {
+  transports: ["websocket", "polling"],
+});
+```
+</CodeGroup>
+
+### Key Components
+
+- **SocketProvider** - Manages WebSocket connection to the server
+- **UserProvider** - Handles user authentication and profile
+- **GameProvider** - Manages game state synchronization
+- **MainProvider** - Wraps all context providers
+
+## Server Architecture
+
+The server is a Node.js application using Express for HTTP and Socket.io for real-time communication.
+
+### Technology Stack
+
+- **Node.js** - Runtime environment
+- **Express 4.21.2** - Web framework
+- **Socket.io 4.8.1** - WebSocket server
+- **CORS 2.8.5** - Cross-origin resource sharing
+- **UUID 11.0.4** - Unique ID generation
+
+### Server Structure
+
+<CodeGroup>
+```plaintext Server Files
+server/
+├── server.js        # Main server and Socket.io handlers
+├── gamestate.js     # GameState class and game logic
+├── room.js          # Room management
+├── users.js         # User tracking
+├── messages.js      # Chat message handling
+└── tests/           # Server tests
+```
+
+```javascript Server Entry
+// server/server.js (simplified)
+const express = require('express');
+const app = express();
+const httpServer = require('http').createServer(app);
+const io = require('socket.io')(httpServer);
+const PORT = process.env.PORT || 3002;
+```
+</CodeGroup>
+
+### Core Server Modules
+
+<Tabs>
+  <Tab title="GameState">
+    The `GameState` class (`gamestate.js`) manages the entire game logic:
+    
+    - Card dealing and shuffling
+    - Card swapping phase
+    - Turn management
+    - Trick evaluation
+    - Scoring system
+    - Win condition checks
+    
+    ```javascript
+    class GameState {
+      constructor() {
+        this.users = [];
+        this.trumpCard = 0;
+        this.state = "lobby"; // lobby, cardSwap, inGame, end
+        this.leadPlayer = -1;
+        this.turn = 0;
+        this.scores = [0, 0];
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Room Management">
+    The `room.js` module handles game room lifecycle:
+    
+    - Creating new rooms
+    - Initializing game state
+    - Managing room instances
+    
+    ```javascript
+    function createRoom(roomId) {
+      rooms[roomId] = new GameState();
+    }
+    
+    function initializeRoom(roomId) {
+      const users = getUsersInRoom(roomId);
+      rooms[roomId].startGame();
+    }
+    ```
+  </Tab>
+  
+  <Tab title="User Tracking">
+    The `users.js` module manages connected users:
+    
+    - Adding/removing users
+    - Tracking users by room
+    - User reconnection handling
+  </Tab>
+</Tabs>
+
+## Socket.io Communication
+
+The application uses Socket.io for bidirectional real-time communication between client and server.
+
+### Server Events
+
+The server listens for these events from clients:
+
+<CodeGroup>
+```javascript Room Events
+// Create a new room
+socket.on("create", (callback) => { ... });
+
+// Join an existing room
+socket.on("join", ({roomId}, callback) => { ... });
+
+// Reconnect to a room
+socket.on("reconnect", ({roomId, userId}, callback) => { ... });
+
+// Leave a room
+socket.on("leaveRoom", (userId) => { ... });
+```
+
+```javascript Game Events
+// Start the game
+socket.on("startGame", ({roomId}, callback) => { ... });
+
+// Play a card
+socket.on("playCard", ({userId, cardIndex}) => { ... });
+
+// Swap cards
+socket.on("swapCards", ({userId, cardIndexes}) => { ... });
+
+// Change team
+socket.on("changeTeam", ({userId, team}) => { ... });
+
+// Change name
+socket.on("changeName", ({userId, name}) => { ... });
+```
+
+```javascript Chat Events
+// Send a message
+socket.on("sendMessage", (message, userId) => { ... });
+
+// Get previous messages
+socket.on("getPreviousMessages", (userId) => { ... });
+```
+</CodeGroup>
+
+### Client Events
+
+The server emits these events to clients:
+
+- `gameState` - Updated game state
+- `users` - Updated list of users in room
+- `message` - New chat messages
+- `previousMessages` - Chat history
+- `notification` - System notifications
+
+## Game State Management
+
+Game state flows from server to client in a unidirectional pattern:
+
+<Steps>
+  <Step title="User Action">
+    User performs an action (e.g., plays a card) in the React UI
+  </Step>
+  
+  <Step title="Socket Emit">
+    Client emits event to server via Socket.io
+    
+    ```typescript
+    socket.emit("playCard", { userId, cardIndex });
+    ```
+  </Step>
+  
+  <Step title="Server Processing">
+    Server validates action and updates `GameState` instance
+    
+    ```javascript
+    const room = getRoom(user.roomId);
+    room.playCardIndex(userId, cardIndex);
+    ```
+  </Step>
+  
+  <Step title="State Broadcast">
+    Server broadcasts updated state to all clients in room
+    
+    ```javascript
+    function sendGameState(roomId) {
+      const roomData = getRoom(roomId);
+      io.to(user.socketId).emit("gameState", roomData);
+    }
+    ```
+  </Step>
+  
+  <Step title="UI Update">
+    Client receives new state and React re-renders UI
+  </Step>
+</Steps>
+
+<Warning>
+  All game logic runs on the server. The client is responsible only for displaying state and capturing user input. This prevents cheating and ensures game integrity.
+</Warning>
+
+## Development Workflow
+
+Both client and server can run concurrently during development:
+
+```bash
+# Terminal 1 - Run client dev server
+cd client
+npm run dev
+
+# Terminal 2 - Run server with auto-reload
+cd server
+npm run dev
+```
+
+The client runs on `http://localhost:5173` (Vite default) and connects to the server on `http://localhost:3002`.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Client Setup" icon="react" href="/development/client-setup">
+    Set up the React development environment
+  </Card>
+  
+  <Card title="Server Setup" icon="server" href="/development/server-setup">
+    Set up the Node.js server environment
+  </Card>
+</CardGroup>

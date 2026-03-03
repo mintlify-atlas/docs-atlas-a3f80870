@@ -1,0 +1,155 @@
+---
+title: Card Suits and Ranks
+description: Understanding the 7 suits, card values, and scoring system in Yokai Septet Online
+---
+
+## The 7 Suits
+
+Yokai Septet Online uses a 49-card deck with 7 suits, each containing 7 ranks. Each suit has a different point value when scoring sevens.
+
+### Suit Order and Values
+
+The suits are numbered 1-7 in the following order:
+
+<Steps>
+  <Step title="Suit 1: Green">
+    Contains cards 1-7 (Green Ace through Green Seven)
+    
+    **Seven Value:** 0 points (unless trump suit)
+  </Step>
+  
+  <Step title="Suit 2: Purple">
+    Contains cards 8-14
+    
+    **Seven Value:** 0 points (unless trump suit)
+  </Step>
+  
+  <Step title="Suit 3: Yellow">
+    Contains cards 15-21
+    
+    **Seven Value:** 1 point (unless trump suit)
+  </Step>
+  
+  <Step title="Suit 4: Red">
+    Contains cards 22-28
+    
+    **Seven Value:** 1 point (unless trump suit)
+  </Step>
+  
+  <Step title="Suit 5: Orange">
+    Contains cards 29-35
+    
+    **Seven Value:** 1 point (unless trump suit)
+  </Step>
+  
+  <Step title="Suit 6: Pink">
+    Contains cards 36-42
+    
+    **Seven Value:** 2 points (unless trump suit)
+  </Step>
+  
+  <Step title="Suit 7: Blue">
+    Contains cards 43-49 (Blue Ace through Blue Thirteen)
+    
+    **Seven Value:** 2 points (unless trump suit)
+  </Step>
+</Steps>
+
+## Card Ranks
+
+Each suit contains 7 cards with ranks from 1 (Ace) to 7:
+
+- **Rank 1:** Ace (special power - see below)
+- **Rank 2-6:** Number cards
+- **Rank 7:** Seven (scoring card)
+
+### Special Cards
+
+<CardGroup cols={2}>
+  <Card title="Green Ace (Card 1)" icon="crown">
+    The most powerful card in the game. Automatically wins any trick, overriding trump and lead suit.
+  </Card>
+  
+  <Card title="Blue Seven (Card 49)" icon="star">
+    The highest-numbered card. If no player has the Green Ace in the first round, the player with Blue Seven leads.
+  </Card>
+</CardGroup>
+
+## Card Numbering System
+
+Internally, cards are numbered 0-49:
+
+- **Card 0:** Empty/no card
+- **Cards 1-7:** Green suit (Ace through Seven)
+- **Cards 8-14:** Purple suit
+- **Cards 15-21:** Yellow suit
+- **Cards 22-28:** Red suit
+- **Cards 29-35:** Orange suit
+- **Cards 36-42:** Pink suit
+- **Cards 43-49:** Blue suit
+
+### Calculating Suit and Rank
+
+From the source code (gamestate.js:19-24):
+
+```javascript
+function getSuit(card) {
+  return Math.floor((card - 1) / 7) + 1;
+}
+
+function getRank(card) {
+  return card - 6 * (getSuit(card) - 1);
+}
+```
+
+<Info>
+  **Example:** Card 15 is Yellow Ace (Suit 3, Rank 1). Card 49 is Blue Seven (Suit 7, Rank 7).
+</Info>
+
+## Seven Scoring Values
+
+The point value of each seven depends on its suit:
+
+| Suit | Seven Value | Cards |
+|------|-------------|-------|
+| Green | 0 points | Card 7 |
+| Purple | 0 points | Card 14 |
+| Yellow | 1 point | Card 21 |
+| Red | 1 point | Card 28 |
+| Orange | 1 point | Card 35 |
+| Pink | 2 points | Card 42 |
+| Blue | 2 points | Card 49 |
+
+<Warning>
+  **Trump Suit Exception:** If a seven belongs to the trump suit, it scores **0 points** regardless of its base value. This is a critical strategic consideration!
+</Warning>
+
+## Trump Suit Mechanics
+
+At the start of each round, one card is randomly selected as the trump card. The suit of this card becomes the trump suit for that round.
+
+### Trump Behavior in Tricks
+
+- Trump cards beat all non-trump cards (except Green Ace)
+- If multiple trump cards are played in a trick, the highest trump card wins
+- Trump cards can be played at any time if you don't have the lead suit
+
+<Note>
+  The trump card (gamestate.js:51) is stored separately and not dealt to any player. It remains face-up for the entire round.
+</Note>
+
+## Strategy Implications
+
+<AccordionGroup>
+  <Accordion title="High-Value Sevens">
+    Pink and Blue sevens are worth 2 points each (unless trump). Prioritize collecting these through trick-taking.
+  </Accordion>
+  
+  <Accordion title="Trump Suit Sevens">
+    If the trump suit is Pink or Blue, those high-value sevens become worthless. Adjust your strategy accordingly.
+  </Accordion>
+  
+  <Accordion title="Green and Purple Sevens">
+    These always score 0 points. They only count toward the "4 sevens" win condition, not toward points.
+  </Accordion>
+</AccordionGroup>

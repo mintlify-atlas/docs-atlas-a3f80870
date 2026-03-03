@@ -1,0 +1,351 @@
+---
+title: 'Client Events'
+description: 'Events sent from client to server in Yokai Septet Online'
+icon: 'arrow-up'
+---
+
+These events are emitted by the client and handled by the server using `socket.on()`. Each event can optionally accept a callback function for server responses.
+
+## Room Management
+
+### create
+
+Creates a new game room and generates a unique room ID.
+
+<ParamField body="callback" type="function" required>
+  Callback function that receives the room creation result
+  
+  **Success Response:**
+  ```typescript
+  {
+    roomId: string,    // 10-character unique room ID
+    username: string,  // Auto-generated username
+    id: string        // User ID (UUID)
+  }
+  ```
+  
+  **Error Response:**
+  ```typescript
+  {
+    error: string
+  }
+  ```
+</ParamField>
+
+<CodeGroup>
+```javascript Example
+socket.emit("create", (response) => {
+  if (response.error) {
+    console.error(response.error);
+  } else {
+    console.log(`Room created: ${response.roomId}`);
+    console.log(`Your username: ${response.username}`);
+  }
+});
+```
+
+```javascript Response
+{
+  roomId: "a3f5k9p2m1",
+  username: "BraveTiger",
+  id: "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+</CodeGroup>
+
+---
+
+### join
+
+Joins an existing room using a room ID.
+
+<ParamField body="roomId" type="string" required>
+  The unique 10-character room ID to join
+</ParamField>
+
+<ParamField body="callback" type="function" required>
+  Callback function that receives the join result
+  
+  **Success Response:**
+  ```typescript
+  {
+    username: string,  // Auto-generated username
+    id: string        // User ID (UUID)
+  }
+  ```
+  
+  **Error Response:**
+  ```typescript
+  {
+    error: "Room does not exist"
+  }
+  ```
+</ParamField>
+
+<CodeGroup>
+```javascript Example
+socket.emit("join", { roomId: "a3f5k9p2m1" }, (response) => {
+  if (response.error) {
+    console.error(response.error);
+  } else {
+    console.log(`Joined as: ${response.username}`);
+  }
+});
+```
+
+```javascript Response
+{
+  username: "CleverFalcon",
+  id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+}
+```
+</CodeGroup>
+
+---
+
+### leaveRoom
+
+Leaves the current room.
+
+<ParamField body="userId" type="string" required>
+  The user ID (received from join or create callback)
+</ParamField>
+
+```javascript Example
+socket.emit("leaveRoom", userId);
+```
+
+---
+
+### reconnect
+
+Reconnects to a room after disconnection (e.g., page refresh).
+
+<ParamField body="roomId" type="string" required>
+  The room ID to reconnect to
+</ParamField>
+
+<ParamField body="userId" type="string" required>
+  The user ID from the previous session
+</ParamField>
+
+<ParamField body="callback" type="function" required>
+  Callback function that receives the reconnection result
+  
+  **Success Response:**
+  ```typescript
+  {
+    username: string,
+    id: string
+  }
+  ```
+  
+  **Error Responses:**
+  ```typescript
+  { error: "Room does not exist" }
+  { error: "User not found. Please rejoin." }
+  ```
+</ParamField>
+
+<CodeGroup>
+```javascript Example
+socket.emit("reconnect", 
+  { roomId: "a3f5k9p2m1", userId: "550e8400-e29b-41d4-a716-446655440000" },
+  (response) => {
+    if (response.error) {
+      console.error(response.error);
+    } else {
+      console.log(`Reconnected as: ${response.username}`);
+    }
+  }
+);
+```
+</CodeGroup>
+
+---
+
+## Player Settings
+
+### changeTeam
+
+Changes the player's team assignment (only available in lobby).
+
+<ParamField body="userId" type="string" required>
+  The user ID
+</ParamField>
+
+<ParamField body="team" type="number" required>
+  Team number: `0` (no team), `1` (team 1), or `2` (team 2)
+</ParamField>
+
+<Note>
+Each team can have a maximum of 2 players. The server will validate this constraint.
+</Note>
+
+```javascript Example
+socket.emit("changeTeam", {
+  userId: "550e8400-e29b-41d4-a716-446655440000",
+  team: 1
+});
+```
+
+---
+
+### changeName
+
+Changes the player's display name.
+
+<ParamField body="userId" type="string" required>
+  The user ID
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  New display name
+</ParamField>
+
+```javascript Example
+socket.emit("changeName", {
+  userId: "550e8400-e29b-41d4-a716-446655440000",
+  name: "ProPlayer123"
+});
+```
+
+---
+
+## Chat
+
+### sendMessage
+
+Sends a chat message to all players in the room.
+
+<ParamField body="message" type="string" required>
+  The message text to send
+</ParamField>
+
+<ParamField body="userId" type="string" required>
+  The sender's user ID
+</ParamField>
+
+```javascript Example
+socket.emit("sendMessage", "Hello everyone!", userId);
+```
+
+---
+
+### getPreviousMessages
+
+Requests chat history for the current room.
+
+<ParamField body="userId" type="string" required>
+  The user ID making the request
+</ParamField>
+
+```javascript Example
+socket.emit("getPreviousMessages", userId);
+```
+
+---
+
+## Game Actions
+
+### startGame
+
+Starts the game when all players are ready.
+
+<ParamField body="roomId" type="string" required>
+  The room ID
+</ParamField>
+
+<ParamField body="callback" type="function" required>
+  Callback function that receives the game start result
+  
+  **Success Response:**
+  ```typescript
+  {
+    gameState: GameState  // Complete game state object
+  }
+  ```
+  
+  **Error Response:**
+  ```typescript
+  {
+    error: "Incorrect Number of people in room!"
+  }
+  ```
+</ParamField>
+
+<Note>
+The game requires exactly 4 players and both teams must be filled (2 players each) to start.
+</Note>
+
+<CodeGroup>
+```javascript Example
+socket.emit("startGame", { roomId: "a3f5k9p2m1" }, (response) => {
+  if (response.error) {
+    console.error(response.error);
+  } else {
+    console.log("Game started!", response.gameState);
+  }
+});
+```
+</CodeGroup>
+
+---
+
+### swapCards
+
+Declares which cards to swap with your teammate during the card swap phase.
+
+<ParamField body="userId" type="string" required>
+  The user ID
+</ParamField>
+
+<ParamField body="cardIndexes" type="number[]" required>
+  Array of 3 card indexes from the player's hand (0-based indexing)
+</ParamField>
+
+<Note>
+You must swap exactly 3 cards. Once all 4 players have declared their swaps, the cards are automatically exchanged with teammates.
+</Note>
+
+<CodeGroup>
+```javascript Example
+socket.emit("swapCards", {
+  userId: "550e8400-e29b-41d4-a716-446655440000",
+  cardIndexes: [0, 3, 7]  // Swap 1st, 4th, and 8th cards
+});
+```
+</CodeGroup>
+
+---
+
+### playCard
+
+Plays a card from your hand during a trick.
+
+<ParamField body="userId" type="string" required>
+  The user ID
+</ParamField>
+
+<ParamField body="cardIndex" type="number" required>
+  Index of the card in the player's hand (0-based)
+</ParamField>
+
+<Note>
+- You can only play on your turn (determined by the game state)
+- You must follow suit if possible
+- The server validates all card plays according to game rules
+</Note>
+
+<CodeGroup>
+```javascript Example
+socket.emit("playCard", {
+  userId: "550e8400-e29b-41d4-a716-446655440000",
+  cardIndex: 2  // Play the 3rd card in hand
+});
+```
+</CodeGroup>
+
+<Info>
+After all 4 players have played a card, the trick is automatically resolved after a 1-second delay. The server will emit updated game states throughout the process.
+</Info>

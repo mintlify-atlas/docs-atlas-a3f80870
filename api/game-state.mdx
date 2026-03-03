@@ -1,0 +1,530 @@
+---
+title: 'GameState Class'
+description: 'Core game state management for Yokai Septet Online'
+---
+
+## Overview
+
+The `GameState` class manages the complete game state including users, cards, turns, and scoring for Yokai Septet Online. It handles all game phases from lobby to card swapping to gameplay.
+
+## Constructor
+
+```javascript
+new GameState()
+```
+
+Creates a new game state instance with default values.
+
+**Initial State:**
+- `users`: Empty array
+- `trumpCard`: 0
+- `state`: "lobby"
+- `leadPlayer`: -1
+- `turn`: 0
+- `scores`: [0, 0]
+
+## Properties
+
+<ResponseField name="users" type="array">
+  Array of user objects containing player information, hands, and tricks won
+</ResponseField>
+
+<ResponseField name="trumpCard" type="number">
+  The trump card for the current round (1-49)
+</ResponseField>
+
+<ResponseField name="state" type="string">
+  Current game state: "lobby", "cardSwap", "inGame", or "end"
+</ResponseField>
+
+<ResponseField name="leadPlayer" type="number">
+  Index of the player who leads the current trick (-1 if not set)
+</ResponseField>
+
+<ResponseField name="turn" type="number">
+  Current turn offset from lead player (0-3, or 4 when trick is complete)
+</ResponseField>
+
+<ResponseField name="scores" type="number[]">
+  Array of two team scores [team1Score, team2Score]
+</ResponseField>
+
+## User Management
+
+### addUser()
+
+Adds a new user to the game.
+
+```javascript
+gameState.addUser(userId, username)
+```
+
+<ParamField path="userId" type="string" required>
+  Unique identifier for the user
+</ParamField>
+
+<ParamField path="username" type="string" required>
+  Display name for the user
+</ParamField>
+
+**User Object Structure:**
+```javascript
+{
+  id: userId,
+  name: username,
+  toSwap: [],
+  cardPlayed: 0,
+  hand: [],
+  team: 0,
+  tricksWon: []
+}
+```
+
+### removeUser()
+
+Removes a user from the game.
+
+```javascript
+gameState.removeUser(userId)
+```
+
+<ParamField path="userId" type="string" required>
+  ID of the user to remove
+</ParamField>
+
+**Returns:** `boolean` - true if user was removed, false if not found
+
+### getUserIndex()
+
+Finds the index of a user in the users array.
+
+```javascript
+gameState.getUserIndex(userId)
+```
+
+<ParamField path="userId" type="string" required>
+  ID of the user to find
+</ParamField>
+
+**Returns:** `number` - Index of user, or -1 if not found
+
+## Team Management
+
+### setTeam()
+
+Assigns a user to a team.
+
+```javascript
+gameState.setTeam(userId, teamNumber)
+```
+
+<ParamField path="userId" type="string" required>
+  ID of the user
+</ParamField>
+
+<ParamField path="teamNumber" type="number" required>
+  Team number (0 for no team, 1 or 2 for teams)
+</ParamField>
+
+**Returns:** `boolean` - true if team assignment successful, false if team is full or user not found
+
+**Rules:**
+- Team 0 removes team assignment
+- Teams 1 and 2 can each have maximum 2 players
+
+### teamsFilled()
+
+Checks if both teams have exactly 2 players.
+
+```javascript
+gameState.teamsFilled()
+```
+
+**Returns:** `boolean` - true if both teams have 2 players
+
+### assignSeats()
+
+Arranges users in alternating team order for gameplay.
+
+```javascript
+gameState.assignSeats()
+```
+
+**Result:** Users array becomes [team1[0], team2[0], team1[1], team2[1]]
+
+## Game Flow
+
+### startGame()
+
+Starts the game from lobby state.
+
+```javascript
+gameState.startGame()
+```
+
+**Returns:** `boolean` - true if game started successfully
+
+**Requirements:**
+- At least 4 users
+- Both teams filled (2 players each)
+- Current state must be "lobby"
+
+**Actions:**
+- Assigns seats in alternating pattern
+- Deals cards to all players
+- Sets state to "cardSwap"
+- Resets scores to [0, 0]
+
+### dealCards()
+
+Deals cards to all players and sets trump card.
+
+```javascript
+gameState.dealCards()
+```
+
+**Logic:**
+- Shuffles deck of 49 cards (1-49)
+- Last card becomes trump card
+- Distributes remaining 48 cards evenly (12 per player)
+- Sorts all hands in ascending order
+
+### sortHands()
+
+Sorts all player hands in ascending order.
+
+```javascript
+gameState.sortHands()
+```
+
+## Card Swapping Phase
+
+### hasSwapped()
+
+Checks if a user has declared their cards to swap.
+
+```javascript
+gameState.hasSwapped(userId)
+```
+
+<ParamField path="userId" type="string" required>
+  ID of the user to check
+</ParamField>
+
+**Returns:** `boolean` - true if user has selected 3 cards to swap
+
+### declareSwap()
+
+Declares which cards a user wants to swap with their partner.
+
+```javascript
+gameState.declareSwap(userId, cards)
+```
+
+<ParamField path="userId" type="string" required>
+  ID of the user declaring swap
+</ParamField>
+
+<ParamField path="cards" type="number[]" required>
+  Array of exactly 3 card numbers to swap
+</ParamField>
+
+**Returns:** `boolean` - true if swap declaration successful
+
+**Validation:**
+- User must not have already swapped
+- Exactly 3 cards required
+- User must own all cards
+
+**Auto-completion:** If all 4 users have declared swaps, automatically calls `completeSwap()`
+
+### declareSwapIndex()
+
+Declares cards to swap using hand indices instead of card numbers.
+
+```javascript
+gameState.declareSwapIndex(userId, cardIndexes)
+```
+
+<ParamField path="userId" type="string" required>
+  ID of the user
+</ParamField>
+
+<ParamField path="cardIndexes" type="number[]" required>
+  Array of 3 indices from user's hand
+</ParamField>
+
+**Returns:** `boolean` - true if swap declaration successful
+
+### completeSwap()
+
+Executes the card swap between partners.
+
+```javascript
+gameState.completeSwap()
+```
+
+**Logic:**
+- Each player's 3 cards go to their partner (player index + 2 mod 4)
+- Changes state to "inGame"
+- Calls `setupLeadPlayer()` to determine first player
+
+### setupLeadPlayer()
+
+Determines which player leads the first trick.
+
+```javascript
+gameState.setupLeadPlayer()
+```
+
+**Rules:**
+- If leadPlayer already set (not first round), keeps current value
+- Player with Ace (card 1) leads
+- If no Ace, player with Blue 7 (card 49) leads
+
+## Playing Cards
+
+### playCard()
+
+Plays a card from a user's hand.
+
+```javascript
+gameState.playCard(userId, card)
+```
+
+<ParamField path="userId" type="string" required>
+  ID of the user playing the card
+</ParamField>
+
+<ParamField path="card" type="number" required>
+  Card number to play (1-49)
+</ParamField>
+
+**Returns:** `boolean` - true if card played successfully
+
+**Validation:**
+- Must be user's turn (based on leadPlayer and turn offset)
+- Turn must not be 4 (trick must be resolved first)
+- User must own the card
+- Must follow suit if possible (cannot play different suit if holding lead suit)
+
+**Effects:**
+- Removes card from user's hand
+- Sets user's cardPlayed
+- Increments turn counter
+
+### playCardIndex()
+
+Plays a card using hand index instead of card number.
+
+```javascript
+gameState.playCardIndex(userId, cardIndex)
+```
+
+<ParamField path="userId" type="string" required>
+  ID of the user
+</ParamField>
+
+<ParamField path="cardIndex" type="number" required>
+  Index of card in user's hand
+</ParamField>
+
+**Returns:** `boolean` - true if card played successfully
+
+## Trick Resolution
+
+### checkTrickEnd()
+
+Checks if current trick is complete.
+
+```javascript
+gameState.checkTrickEnd()
+```
+
+**Returns:** `boolean` - true if turn equals 4 (all players have played)
+
+### resolveTrick()
+
+Resolves the current trick and determines winner.
+
+```javascript
+gameState.resolveTrick()
+```
+
+**Returns:** `boolean` - true if trick resolved successfully, false if trick not complete
+
+**Logic:**
+- Collects all 4 cards played
+- Evaluates winner using `evaluateTrick()` helper
+- Awards cards to winning player's tricksWon array
+- Sets winner as new leadPlayer
+- Resets turn to 0
+- Clears all cardPlayed values
+
+## Scoring
+
+### countTricks()
+
+Counts total tricks won by a team.
+
+```javascript
+gameState.countTricks(teamNumber)
+```
+
+<ParamField path="teamNumber" type="number" required>
+  Team number (1 or 2)
+</ParamField>
+
+**Returns:** `number` - Total tricks won by both players on the team
+
+### getSevens()
+
+Gets all sevens won by a team.
+
+```javascript
+gameState.getSevens(teamNumber)
+```
+
+<ParamField path="teamNumber" type="number" required>
+  Team number (1 or 2)
+</ParamField>
+
+**Returns:** `number[]` - Array of seven card numbers won by the team
+
+### countSevens()
+
+Counts sevens won by a team.
+
+```javascript
+gameState.countSevens(teamNumber)
+```
+
+<ParamField path="teamNumber" type="number" required>
+  Team number (1 or 2)
+</ParamField>
+
+**Returns:** `number` - Number of sevens won
+
+### scoreSevens()
+
+Calculates points from sevens based on suit values.
+
+```javascript
+gameState.scoreSevens(sevens)
+```
+
+<ParamField path="sevens" type="number[]" required>
+  Array of seven card numbers to score
+</ParamField>
+
+**Returns:** `number` - Total points from sevens
+
+**Scoring Table:**
+- Green 7 (suit 1): 0 points
+- Purple 7 (suit 2): 0 points
+- Pink 7 (suit 3): 1 point
+- Yellow 7 (suit 4): 1 point
+- Black 7 (suit 5): 1 point
+- Red 7 (suit 6): 2 points
+- Blue 7 (suit 7): 2 points
+- Trump suit sevens: 0 points
+
+### doScoring()
+
+Calculates and awards points at end of round.
+
+```javascript
+gameState.doScoring()
+```
+
+**Scoring Rules:**
+1. If team has 4+ sevens: Score their sevens
+2. If opponent has 7+ tricks: Score your sevens + opponent's remaining hand sevens
+3. Otherwise: Lead player's team scores their sevens
+
+## Round Management
+
+### tryEndRound()
+
+Checks if round should end and handles scoring.
+
+```javascript
+gameState.tryEndRound()
+```
+
+**Returns:** `boolean` - true if round ended
+
+**End Conditions:**
+- One team has 4+ sevens
+- One team has 7+ tricks
+- All 12 tricks played (team1 + team2 tricks = 12)
+
+**Actions if ending:**
+- Calls `doScoring()`
+- Calls `restartRound()`
+
+### restartRound()
+
+Resets game state for a new round.
+
+```javascript
+gameState.restartRound()
+```
+
+**Actions:**
+- Clears all user hands, toSwap arrays, and tricksWon
+- Deals new cards
+- Sets state to "cardSwap"
+
+## Helper Functions
+
+### getSuit()
+
+Gets the suit number of a card.
+
+```javascript
+getSuit(card)
+```
+
+<ParamField path="card" type="number" required>
+  Card number (1-49)
+</ParamField>
+
+**Returns:** `number` - Suit (1=Green, 2=Purple, 3=Pink, 4=Yellow, 5=Black, 6=Red, 7=Blue)
+
+### getRank()
+
+Gets the rank of a card within its suit.
+
+```javascript
+getRank(card)
+```
+
+<ParamField path="card" type="number" required>
+  Card number (1-49)
+</ParamField>
+
+**Returns:** `number` - Rank (1-7 within suit)
+
+### evaluateTrick()
+
+Determines the winner of a trick.
+
+```javascript
+evaluateTrick(cards, trump)
+```
+
+<ParamField path="cards" type="number[]" required>
+  Array of 4 cards played in order
+</ParamField>
+
+<ParamField path="trump" type="number" required>
+  Trump card number
+</ParamField>
+
+**Returns:** `number` - Index (0-3) of winning card
+
+**Priority:**
+1. Ace (card 1) always wins
+2. Highest trump suit card
+3. Highest lead suit card

@@ -1,0 +1,506 @@
+---
+title: Server Setup
+description: Setting up the Node.js server for local development
+---
+
+## Prerequisites
+
+Before setting up the server, ensure you have:
+
+- **Node.js** (v16 or higher recommended)
+- **npm** (comes with Node.js)
+- **Git** (for cloning the repository)
+
+## Clone the Repository
+
+If you haven't already cloned the repository:
+
+```bash
+git clone <repository-url>
+cd yokai-septet-online
+```
+
+## Install Dependencies
+
+Navigate to the server directory and install dependencies:
+
+<Steps>
+  <Step title="Navigate to server directory">
+    ```bash
+    cd server
+    ```
+  </Step>
+  
+  <Step title="Install packages">
+    ```bash
+    npm install
+    ```
+    
+    This installs all dependencies from `package.json`:
+    
+    **Production Dependencies:**
+    - `express` - Web framework
+    - `socket.io` - Real-time communication
+    - `cors` - Cross-origin resource sharing
+    - `uuid` - Unique ID generation
+    
+    **Development Dependencies:**
+    - `nodemon` - Auto-restart on file changes
+  </Step>
+</Steps>
+
+## Project Structure
+
+After installation, your server directory structure:
+
+```plaintext
+server/
+├── node_modules/         # Installed dependencies
+├── tests/                # Test files
+├── server.js             # Main server file
+├── gamestate.js          # Game logic and state management
+├── room.js               # Room creation and management
+├── users.js              # User tracking utilities
+├── messages.js           # Chat message handling
+├── package.json          # Dependencies and scripts
+└── .gitignore            # Git ignore rules
+```
+
+## Development Scripts
+
+The server includes npm scripts in `package.json`:
+
+<CodeGroup>
+```json package.json
+{
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  }
+}
+```
+</CodeGroup>
+
+### Available Commands
+
+<Tabs>
+  <Tab title="dev">
+    Start the server with auto-reload (recommended for development):
+    
+    ```bash
+    npm run dev
+    ```
+    
+    - Uses `nodemon` to watch for file changes
+    - Automatically restarts server when code changes
+    - Ideal for development workflow
+    - Shows real-time logs in terminal
+  </Tab>
+  
+  <Tab title="start">
+    Start the server in production mode:
+    
+    ```bash
+    npm start
+    ```
+    
+    - Runs server with `node` directly
+    - No auto-reload on changes
+    - Use for production deployment
+  </Tab>
+</Tabs>
+
+## Running the Server
+
+<Steps>
+  <Step title="Navigate to server directory">
+    ```bash
+    cd server
+    ```
+  </Step>
+  
+  <Step title="Start the development server">
+    ```bash
+    npm run dev
+    ```
+    
+    You should see output like:
+    ```
+    [nodemon] starting `node server.js`
+    Listening to 3002
+    ```
+  </Step>
+  
+  <Step title="Verify it's running">
+    The server is now running on `http://localhost:3002` and ready to accept Socket.io connections.
+  </Step>
+</Steps>
+
+## Server Configuration
+
+### Port Configuration
+
+The server runs on port 3002 by default. You can change this using an environment variable:
+
+```javascript
+// server.js
+const PORT = process.env.PORT || 3002;
+```
+
+<Tabs>
+  <Tab title="Linux/Mac">
+    ```bash
+    PORT=3001 npm run dev
+    ```
+  </Tab>
+  
+  <Tab title="Windows (PowerShell)">
+    ```powershell
+    $env:PORT=3001
+    npm run dev
+    ```
+  </Tab>
+  
+  <Tab title="Windows (CMD)">
+    ```cmd
+    set PORT=3001
+    npm run dev
+    ```
+  </Tab>
+</Tabs>
+
+### CORS Configuration
+
+CORS is enabled for all origins in development:
+
+```javascript
+const cors = require('cors');
+app.use(cors());
+```
+
+<Warning>
+  For production, restrict CORS to your frontend domain:
+  
+  ```javascript
+  app.use(cors({
+    origin: 'https://your-frontend-domain.com'
+  }));
+  ```
+</Warning>
+
+## Server Components
+
+Understanding the key server files:
+
+### server.js
+
+The main server file that handles:
+
+- Express server setup
+- Socket.io initialization
+- Connection handling
+- Event listeners for game actions
+
+<CodeGroup>
+```javascript Express Setup
+const express = require('express');
+const cors = require('cors');
+const app = express();
+const httpServer = require('http').createServer(app);
+const io = require('socket.io')(httpServer);
+
+app.use(cors());
+```
+
+```javascript Socket.io Events
+io.on('connection', (socket) => {
+  socket.on("create", (callback) => { ... });
+  socket.on("join", ({roomId}, callback) => { ... });
+  socket.on("playCard", ({userId, cardIndex}) => { ... });
+  socket.on("swapCards", ({userId, cardIndexes}) => { ... });
+  // ... more event handlers
+});
+```
+</CodeGroup>
+
+### gamestate.js
+
+Contains the `GameState` class with all game logic:
+
+- Card dealing and shuffling
+- Turn management
+- Card play validation
+- Trick evaluation
+- Scoring system
+
+```javascript
+class GameState {
+  constructor() {
+    this.users = [];
+    this.trumpCard = 0;
+    this.state = "lobby"; // lobby, cardSwap, inGame, end
+    this.leadPlayer = -1;
+    this.turn = 0;
+    this.scores = [0, 0];
+  }
+  
+  playCard(userId, card) { ... }
+  resolveTrick() { ... }
+  doScoring() { ... }
+}
+```
+
+### room.js
+
+Manages game rooms:
+
+```javascript
+const rooms = {};
+
+function createRoom(roomId) {
+  rooms[roomId] = new GameState();
+}
+
+function initializeRoom(roomId) {
+  const users = getUsersInRoom(roomId);
+  rooms[roomId].startGame();
+}
+
+function getRoom(roomId) {
+  return rooms[roomId];
+}
+```
+
+### users.js
+
+Handles user management:
+
+- `addUser({ socketId, roomId })` - Add user to room
+- `getUser(userId)` - Get user by ID
+- `removeUser(userId)` - Remove user
+- `getUsersInRoom(roomId)` - Get all users in room
+
+### messages.js
+
+Manages chat functionality:
+
+- `addMessage(roomId, message)` - Store a message
+- `getMessages(roomId)` - Retrieve chat history
+
+## Socket.io Event Reference
+
+### Client → Server Events
+
+<AccordionGroup>
+  <Accordion title="Room Management">
+    ```javascript
+    // Create a new room
+    socket.emit("create", (response) => {
+      // response: { roomId, username, id }
+    });
+    
+    // Join existing room
+    socket.emit("join", { roomId }, (response) => {
+      // response: { username, id } or { error }
+    });
+    
+    // Reconnect to room
+    socket.emit("reconnect", { roomId, userId }, (response) => {
+      // response: { username, id } or { error }
+    });
+    
+    // Leave room
+    socket.emit("leaveRoom", userId);
+    ```
+  </Accordion>
+  
+  <Accordion title="Game Actions">
+    ```javascript
+    // Start game (requires 4 players)
+    socket.emit("startGame", { roomId }, (response) => {
+      // response: { gameState } or { error }
+    });
+    
+    // Play a card
+    socket.emit("playCard", { userId, cardIndex });
+    
+    // Swap cards (during card swap phase)
+    socket.emit("swapCards", { userId, cardIndexes });
+    
+    // Change team
+    socket.emit("changeTeam", { userId, team });
+    
+    // Change name
+    socket.emit("changeName", { userId, name });
+    ```
+  </Accordion>
+  
+  <Accordion title="Chat">
+    ```javascript
+    // Send message
+    socket.emit("sendMessage", message, userId);
+    
+    // Get previous messages
+    socket.emit("getPreviousMessages", userId);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Server → Client Events
+
+```javascript
+// Game state update
+socket.on("gameState", (gameState) => { ... });
+
+// User list update
+socket.on("users", (users) => { ... });
+
+// Chat message
+socket.on("message", (messages) => { ... });
+
+// Previous messages
+socket.on("previousMessages", (messages) => { ... });
+
+// System notification
+socket.on("notification", (message) => { ... });
+```
+
+## Development Tips
+
+### Logging
+
+The server includes console.log statements for debugging. Monitor these in your terminal:
+
+```javascript
+console.log("Creating a room");
+console.log(`Room ${roomId} created by user ${user.name}`);
+console.log("Found user", user);
+```
+
+### Testing with Multiple Clients
+
+To test multiplayer functionality:
+
+1. Open multiple browser windows/tabs
+2. Connect each to `http://localhost:5173`
+3. Create a room in one window
+4. Join the room from other windows
+5. Monitor server logs to see events
+
+### Debugging Socket Events
+
+Add logging to Socket.io events:
+
+```javascript
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port 3002 already in use">
+    Find and kill the process using the port:
+    
+    ```bash
+    # Linux/Mac
+    lsof -ti:3002 | xargs kill -9
+    
+    # Windows (PowerShell)
+    Get-Process -Id (Get-NetTCPConnection -LocalPort 3002).OwningProcess | Stop-Process
+    ```
+    
+    Or use a different port:
+    ```bash
+    PORT=3001 npm run dev
+    ```
+  </Accordion>
+  
+  <Accordion title="Module not found">
+    Reinstall dependencies:
+    
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+  
+  <Accordion title="Client can't connect">
+    Check that:
+    - Server is running on port 3002
+    - Client Socket.io URL matches: `ws://localhost:3002`
+    - CORS is enabled
+    - No firewall blocking the port
+  </Accordion>
+  
+  <Accordion title="nodemon not working">
+    Install nodemon globally:
+    
+    ```bash
+    npm install -g nodemon
+    ```
+    
+    Or use it from local installation:
+    ```bash
+    npx nodemon server.js
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Production Deployment
+
+When deploying to production:
+
+<Steps>
+  <Step title="Set environment variables">
+    ```bash
+    PORT=3002
+    NODE_ENV=production
+    ```
+  </Step>
+  
+  <Step title="Configure CORS">
+    Update CORS to allow only your frontend domain:
+    
+    ```javascript
+    app.use(cors({
+      origin: process.env.FRONTEND_URL || 'https://your-app.com',
+      credentials: true
+    }));
+    ```
+  </Step>
+  
+  <Step title="Use production command">
+    ```bash
+    npm start
+    ```
+  </Step>
+  
+  <Step title="Consider using PM2">
+    For process management in production:
+    
+    ```bash
+    npm install -g pm2
+    pm2 start server.js --name yokai-server
+    pm2 save
+    pm2 startup
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Client Setup" icon="react" href="/development/client-setup">
+    Set up the React frontend
+  </Card>
+  
+  <Card title="Architecture" icon="sitemap" href="/development/architecture">
+    Understand the system architecture
+  </Card>
+</CardGroup>

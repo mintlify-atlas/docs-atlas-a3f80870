@@ -1,0 +1,235 @@
+---
+title: "Yokai Septet Online"
+description: "A real-time multiplayer card game built with React, TypeScript, Node.js, and Socket.io"
+---
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.png"
+  alt="Yokai Septet Online"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.png"
+  alt="Yokai Septet Online"
+/>
+
+## Welcome to Yokai Septet Online
+
+Yokai Septet Online is a real-time multiplayer implementation of the trick-taking card game for 4 players. Built with modern web technologies, it brings the strategic depth of Yokai Septet to your browser with seamless real-time gameplay.
+
+<CardGroup cols={2}>
+  <Card
+    title="Quick Start"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get the game running locally in minutes
+  </Card>
+  <Card
+    title="Game Rules"
+    icon="book"
+    href="/rules/overview"
+  >
+    Learn how to play Yokai Septet
+  </Card>
+  <Card
+    title="Architecture"
+    icon="diagram-project"
+    href="/development/architecture"
+  >
+    Understand the technical architecture
+  </Card>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api/client-events"
+  >
+    Explore Socket.io events and game state
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<AccordionGroup>
+  <Accordion icon="users" title="Real-time Multiplayer">
+    Built on Socket.io for instant, synchronized gameplay across all 4 players. Players see card plays, trick resolutions, and score updates in real-time with automatic reconnection support.
+  </Accordion>
+
+  <Accordion icon="gamepad" title="Team-Based Strategy">
+    Players form two teams of 2 in alternating seating positions. Teams compete to collect sevens or win tricks, with strategic card swapping between partners at the start of each round.
+  </Accordion>
+
+  <Accordion icon="cards" title="49-Card Deck System">
+    Seven suits (Green, Purple, Pink, Yellow, Black, Red, Blue) with seven ranks each (1-7). The unique Ace card and trump suit mechanics create deep strategic gameplay.
+  </Accordion>
+
+  <Accordion icon="arrows-rotate" title="Dynamic Game State">
+    Automatic state management handles lobby formation, card swapping phase, trick-taking gameplay, and scoring. Round-based progression with persistent team scores.
+  </Accordion>
+
+  <Accordion icon="palette" title="Modern React UI">
+    Built with React 18, TypeScript, and Material-UI for a responsive, type-safe interface. Clean visual design with drag-and-drop card interactions.
+  </Accordion>
+
+  <Accordion icon="plug" title="Reconnection Support">
+    Players can reconnect to ongoing games without disrupting gameplay. Session persistence maintains game state across disconnections.
+  </Accordion>
+</AccordionGroup>
+
+## Technology Stack
+
+<CardGroup cols={3}>
+  <Card title="Frontend" icon="react">
+    - React 18.3
+    - TypeScript 5.6
+    - Material-UI 6.1
+    - Vite 6.0
+    - Socket.io Client 4.8
+  </Card>
+  
+  <Card title="Backend" icon="node">
+    - Node.js
+    - Express 4.21
+    - Socket.io 4.8
+    - UUID generation
+    - In-memory game state
+  </Card>
+  
+  <Card title="Development" icon="code">
+    - ESLint for code quality
+    - Nodemon for hot reload
+    - TypeScript strict mode
+    - Real-time debugging
+  </Card>
+</CardGroup>
+
+## Game Flow Overview
+
+<Steps>
+  <Step title="Room Creation">
+    A player creates a room and receives a unique 10-character room code. They can share this code with 3 other players.
+  </Step>
+  
+  <Step title="Team Selection">
+    Once 4 players join, they choose teams (2 players per team). Players can customize their display names in the lobby.
+  </Step>
+  
+  <Step title="Card Swap Phase">
+    Each round begins with card swapping. Players select 3 cards to pass to their teammate across the table. The game automatically begins once all 4 players have selected their cards.
+  </Step>
+  
+  <Step title="Trick-Taking">
+    Players take turns playing cards following suit rules. The lead player is determined by who holds the Ace (Green 1) or Blue 7 in the first round, then by the previous trick winner.
+  </Step>
+  
+  <Step title="Round Resolution">
+    Rounds end when a team collects 4+ sevens, wins 7+ tricks, or all 12 tricks are played. Teams score points based on the sevens they've collected, with values varying by suit.
+  </Step>
+</Steps>
+
+## Core Concepts
+
+### Card Values
+
+Cards are represented internally as numbers 1-49:
+- **Card 1**: Green Ace (special card - always wins)
+- **Cards 1-7**: Green suit, ranks 1-7
+- **Cards 8-14**: Purple suit, ranks 1-7
+- **Cards 15-49**: Pink, Yellow, Black, Red, Blue suits
+
+```typescript
+// From client/src/utils/cardHelper.tsx
+export function numberToGameCard(cardNumber: number): GameCardProps | undefined {
+  if (cardNumber == 0) {
+    return undefined;
+  }
+  
+  const suitNumber = Math.floor((cardNumber - 1) / 7) + 1;
+  const suit = suitNumberToSuit(suitNumber);
+  return { rank: cardNumber - ((suitNumber - 1) * 6), suit: suit };
+}
+```
+
+### Suit System
+
+Seven distinct suits with strategic importance:
+
+| Suit | Seven Value (non-trump) |
+|------|------------------------|
+| Green | 0 points |
+| Purple | 0 points |
+| Pink | 1 point |
+| Yellow | 1 point |
+| Black | 1 point |
+| Red | 2 points |
+| Blue | 2 points |
+
+<Note>
+The trump suit's sevens are worth 0 points regardless of the suit. Trump is determined randomly each round by the remaining card after dealing.
+</Note>
+
+### Trick Resolution
+
+From `server/gamestate.js:26`, tricks are evaluated with these rules:
+
+1. **Ace (Card 1)** always wins any trick
+2. **Trump suit** cards beat all non-trump cards
+3. Among trump cards, the highest rank wins
+4. Among lead suit cards, the highest rank wins
+
+```javascript
+function evaluateTrick(cards, trump) {
+  // Check for Ace first
+  for (let i = 0; i < cards.length; i++) {
+    if (cards[i] == 1) {
+      return i;
+    }
+  }
+
+  const leadSuit = getSuit(cards[0]);
+  const trumpSuit = getSuit(trump);
+  const trumps = cards.filter((c) => getSuit(c) == trumpSuit);
+
+  if (trumps.length > 0) {
+    return cards.indexOf(Math.max(...trumps));
+  }
+  return cards.indexOf(Math.max(...leads));
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Get Started"
+    icon="play"
+    href="/quickstart"
+  >
+    Follow the quickstart guide to run the game locally
+  </Card>
+  
+  <Card
+    title="Learn the Rules"
+    icon="scroll"
+    href="/rules/overview"
+  >
+    Master the game mechanics and scoring system
+  </Card>
+  
+  <Card
+    title="Explore the Code"
+    icon="code-branch"
+    href="/development/architecture"
+  >
+    Dive into the technical implementation
+  </Card>
+  
+  <Card
+    title="Socket Events"
+    icon="bolt"
+    href="/api/client-events"
+  >
+    Reference all Socket.io events and payloads
+  </Card>
+</CardGroup>

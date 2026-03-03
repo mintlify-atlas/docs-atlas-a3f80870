@@ -1,80 +1,414 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Quick Start"
+description: "Get Yokai Septet Online running locally and start playing in minutes"
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
+Before you begin, ensure you have the following installed:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Node.js" icon="node-js">
+    Node.js 18.x or later
+  </Card>
+  <Card title="npm" icon="box">
+    npm package manager (comes with Node.js)
+  </Card>
 </CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+You'll need two terminal windows - one for the server and one for the client.
 </Note>
+
+## Installation & Setup
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone or download the Yokai Septet Online source code to your local machine.
+    
+    ```bash
+    git clone <repository-url>
+    cd yokai-septet-online
+    ```
+  </Step>
+
+  <Step title="Install Server Dependencies">
+    Navigate to the server directory and install dependencies:
+    
+    ```bash
+    cd server
+    npm install
+    ```
+    
+    This installs the required packages:
+    - **express** (4.21.2) - Web server framework
+    - **socket.io** (4.8.1) - Real-time communication
+    - **cors** (2.8.5) - Cross-origin resource sharing
+    - **uuid** (11.0.4) - Room ID generation
+    - **nodemon** (3.1.7) - Development hot reload
+  </Step>
+
+  <Step title="Install Client Dependencies">
+    In a new terminal, navigate to the client directory and install dependencies:
+    
+    ```bash
+    cd client
+    npm install
+    ```
+    
+    This installs the required packages:
+    - **react** (18.3.1) - UI framework
+    - **react-router** (7.0.2) - Client-side routing
+    - **socket.io-client** (4.8.1) - Real-time client
+    - **@mui/material** (6.1.10) - Material Design components
+    - **vite** (6.0.1) - Build tool and dev server
+  </Step>
+
+  <Step title="Start the Server">
+    In the server directory, start the Node.js server:
+    
+    ```bash
+    # For development (with hot reload)
+    npm run dev
+    
+    # Or for production
+    npm start
+    ```
+    
+    The server will start on **http://localhost:3002**
+    
+    <Info>
+    The server port can be configured via the `PORT` environment variable. Default is 3002.
+    </Info>
+  </Step>
+
+  <Step title="Start the Client">
+    In the client directory, start the Vite development server:
+    
+    ```bash
+    npm run dev
+    ```
+    
+    The client will start on **http://localhost:5173** (or the next available port)
+    
+    <Tip>
+    Vite provides hot module replacement (HMR), so your changes will appear instantly without refreshing the page.
+    </Tip>
+  </Step>
+</Steps>
+
+## Playing Your First Game
+
+<Steps>
+  <Step title="Open the Game">
+    Navigate to **http://localhost:5173** in your web browser. You'll see the home screen with two options:
+    - **Create Room** - Start a new game
+    - **Join Room** - Join an existing game with a room code
+    
+    ![Home Screen](/images/home-screen.png)
+  </Step>
+
+  <Step title="Create a Room">
+    Click **Create Room**. The server generates a unique 10-character room code and automatically assigns you a random username.
+    
+    ```javascript
+    // From server/server.js:23-24
+    do {
+      roomId = uuidv4().replace(/-/g, "").slice(0, 10); 
+    } while (activeRooms.has(roomId));
+    ```
+    
+    Share this room code with 3 other players.
+  </Step>
+
+  <Step title="Join Teams">
+    Once 4 players have joined, you'll be in the lobby. Here you can:
+    
+    - **Change your name** using the text field
+    - **Join Team 1** or **Team 2** by clicking the Join button
+    - Wait for all 4 players to select teams (2 per team)
+    
+    ```javascript
+    // From client/src/pages/Room/Lobby.tsx:16-17
+    const handleChangeTeam = (team: number) => {
+      socket.emit("changeTeam", { userId: storedUserId, team: team });
+    };
+    ```
+    
+    <Warning>
+    The game requires exactly 4 players with 2 on each team before you can start. The start button will only appear when this condition is met.
+    </Warning>
+  </Step>
+
+  <Step title="Card Swap Phase">
+    When the game starts, each player receives 12 cards. The game begins in the **Card Swap** phase:
+    
+    1. Select **3 cards** from your hand to pass to your teammate
+    2. Click the cards you want to swap (they'll be highlighted)
+    3. Once all 4 players have selected 3 cards, the swap happens automatically
+    
+    ```javascript
+    // From server/gamestate.js:213-216
+    if (this.users.every((user) => user.toSwap.length === 3)) {
+      console.log(this.users);
+      this.completeSwap();
+    }
+    ```
+    
+    <Note>
+    Cards are passed to your teammate sitting across from you (positions 0↔2 and 1↔3).
+    </Note>
+  </Step>
+
+  <Step title="Play Cards">
+    After the swap, trick-taking begins:
+    
+    - The player with the **Green Ace** (card 1) or **Blue 7** (card 49) leads the first trick
+    - Play proceeds clockwise around the table
+    - **Follow suit rules apply**: You must play a card matching the lead suit if you have one
+    
+    ```javascript
+    // From server/gamestate.js:275-285
+    if (this.turn != 0) {
+      const leadSuit = getSuit(this.users[this.leadPlayer].cardPlayed);
+      if (getSuit(card) != leadSuit) {
+        // Check each card in hand
+        for (let i = 0; i < this.users[uIndex].hand.length; i++) {
+          if (getSuit(this.users[uIndex].hand[i]) == leadSuit) {
+            return false; // Cannot short suit
+          }
+        }
+      }
+    }
+    ```
+    
+    <Tip>
+    Check the cheatsheet (accessible during gameplay) for scoring values and suit colors.
+    </Tip>
+  </Step>
+
+  <Step title="Win the Game">
+    A round ends when:
+    - A team collects **4 or more sevens**
+    - A team wins **7 or more tricks**
+    - All **12 tricks** have been played
+    
+    Teams score points based on the sevens they've collected. The game continues through multiple rounds, tracking cumulative scores.
+    
+    ```javascript
+    // From server/gamestate.js:348-355
+    scoreSevens(sevens) {
+      const trumpSuit = getSuit(this.trumpCard);
+      let score = 0;
+      sevens.forEach((c) => {
+        score += getSuit(c) == trumpSuit ? 0 : 
+          [0, 0, 1, 1, 1, 2, 2][getSuit(c) - 1];
+      });
+      return score;
+    }
+    ```
+  </Step>
+</Steps>
+
+## Testing with Multiple Players
+
+Since the game requires 4 players, you have a few options for testing:
+
+<Tabs>
+  <Tab title="Multiple Browser Windows">
+    Open 4 browser windows or tabs:
+    
+    1. Window 1: Create a room and note the room code
+    2. Windows 2-4: Join using the room code
+    
+    <Warning>
+    Some browsers may share local storage between tabs. Use different browser profiles or incognito windows if you encounter issues.
+    </Warning>
+  </Tab>
+  
+  <Tab title="Multiple Devices">
+    Connect multiple devices to your local network:
+    
+    1. Find your local IP address (e.g., 192.168.1.100)
+    2. Update the client socket connection to use your IP
+    3. Access the game from other devices at `http://<your-ip>:5173`
+    
+    <Note>
+    Ensure your firewall allows connections on ports 3002 (server) and 5173 (client).
+    </Note>
+  </Tab>
+  
+  <Tab title="Friends on Network">
+    Share your local IP address with friends on the same network:
+    
+    ```bash
+    # macOS/Linux
+    ifconfig | grep "inet "
+    
+    # Windows
+    ipconfig
+    ```
+    
+    They can access the game at `http://<your-ip>:5173`
+  </Tab>
+</Tabs>
+
+## Configuration
+
+### Server Port
+
+The server runs on port 3002 by default. To change it:
+
+```bash
+# Set via environment variable
+PORT=3000 npm start
+
+# Or edit server/server.js:5
+const PORT = process.env.PORT || 3002;
+```
+
+### Socket Connection
+
+The client connects to the server using Socket.io. To configure the connection URL, check the Socket provider setup in the client code.
+
+### Debug Mode
+
+The client has a debug mode flag in `client/src/utils/constants.tsx`:
+
+```typescript
+export const DEBUG_MODE = true;
+```
+
+Set this to `false` to disable debug logging.
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion icon="triangle-exclamation" title="Room does not exist">
+    This error appears when joining with an invalid room code. Common causes:
+    - The room code was typed incorrectly
+    - The server was restarted (rooms are stored in memory)
+    - The room creator left before you joined
+    
+    **Solution**: Create a new room or get a fresh room code.
+  </Accordion>
+
+  <Accordion icon="triangle-exclamation" title="Cannot start game">
+    The game requires exactly 4 players with 2 on each team.
+    
+    **Solution**: Ensure all 4 players have joined and selected teams (2 per team).
+  </Accordion>
+
+  <Accordion icon="triangle-exclamation" title="Disconnection issues">
+    If a player disconnects, they can reconnect using their stored user ID.
+    
+    ```javascript
+    // From server/server.js:110-142
+    socket.on("reconnect", ({ roomId, userId }, callback) => {
+      const user = getUser(userId);
+      if (!user) {
+        return callback?.({ error: "User not found. Please rejoin." });
+      }
+      // Rejoin the room and restore state
+    });
+    ```
+    
+    **Solution**: Refresh the page - the client will attempt to reconnect automatically.
+  </Accordion>
+
+  <Accordion icon="triangle-exclamation" title="Port already in use">
+    If you see an error about ports 3002 or 5173 being in use:
+    
+    ```bash
+    # Find and kill the process using the port
+    # macOS/Linux
+    lsof -ti:3002 | xargs kill -9
+    
+    # Windows
+    netstat -ano | findstr :3002
+    taskkill /PID <process_id> /F
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+Now that you have the game running:
+
+<CardGroup cols={2}>
+  <Card
+    title="Deep Dive into Rules"
+    icon="book-open"
+    href="/rules/overview"
+  >
+    Understand trick-taking, scoring, and winning conditions
+  </Card>
+  
+  <Card
+    title="Explore the Architecture"
+    icon="sitemap"
+    href="/development/architecture"
+  >
+    Learn how the client and server communicate
+  </Card>
+  
+  <Card
+    title="Socket Events Reference"
+    icon="code"
+    href="/api/client-events"
+  >
+    See all available Socket.io events and payloads
+  </Card>
+  
+  <Card
+    title="Game State Management"
+    icon="database"
+    href="/api/game-state"
+  >
+    Understand how game state is tracked and synchronized
+  </Card>
+  
+  <Card
+    title="Explore the Architecture"
+    icon="sitemap"
+    href="/architecture"
+  >
+    Learn how the client and server communicate
+  </Card>
+  
+  <Card
+    title="Socket Events Reference"
+    icon="code"
+    href="/api-reference"
+  >
+    See all available Socket.io events and payloads
+  </Card>
+  
+  <Card
+    title="Game State Management"
+    icon="database"
+    href="/game-state"
+  >
+    Understand how game state is tracked and synchronized
+  </Card>
+</CardGroup>
+
+## Development Tips
+
+<CardGroup cols={2}>
+  <Card title="Hot Reload" icon="fire">
+    Both the client (Vite) and server (nodemon) support hot reload. Changes appear automatically.
+  </Card>
+  
+  <Card title="Type Safety" icon="shield">
+    The client uses TypeScript with strict mode. Run `npm run lint` to check for issues.
+  </Card>
+  
+  <Card title="Socket Debugging" icon="bug">
+    Enable Socket.io debugging with `localStorage.debug = 'socket.io-client:socket'` in the browser console.
+  </Card>
+  
+  <Card title="Game State Inspection" icon="magnifying-glass">
+    Check the server console for detailed game state logging during gameplay.
+  </Card>
+</CardGroup>

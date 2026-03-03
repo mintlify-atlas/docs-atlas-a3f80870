@@ -1,0 +1,303 @@
+---
+title: Gameplay Phases
+description: Step-by-step guide through lobby setup, card swapping, and in-game trick-taking
+---
+
+## Game Phase Overview
+
+Every game of Yokai Septet Online progresses through distinct phases. Understanding each phase is crucial for strategic play.
+
+<Steps>
+  <Step title="Lobby Phase">
+    Players join the room and select teams
+  </Step>
+  
+  <Step title="Card Swap Phase">
+    Each player selects 3 cards to exchange with their partner
+  </Step>
+  
+  <Step title="In-Game Phase">
+    Players take turns playing cards in 12 tricks
+  </Step>
+  
+  <Step title="Round End">
+    Scoring is calculated and a new round begins
+  </Step>
+</Steps>
+
+---
+
+## Lobby Phase
+
+The lobby phase begins when a room is created and ends when the game starts.
+
+### Team Selection
+
+<Info>
+  Four players are required to start a game. Each player must join either Team 1 or Team 2.
+</Info>
+
+**Team Requirements:**
+- Exactly 2 players on Team 1
+- Exactly 2 players on Team 2
+- Players start with `team = 0` (no team) and must select a team
+
+**Seat Assignment:**
+
+Once teams are filled, players are seated alternately (gamestate.js:126-137):
+
+```
+Seat 0: Team 1 Player 1
+Seat 1: Team 2 Player 1  
+Seat 2: Team 1 Player 2
+Seat 3: Team 2 Player 2
+```
+
+This ensures teammates sit opposite each other at the table.
+
+### Starting the Game
+
+The game can only start when (gamestate.js:140-157):
+
+1. At least 4 players are in the room
+2. Both teams have exactly 2 players
+3. The current state is "lobby"
+
+When these conditions are met, the game:
+- Assigns seats alternately by team
+- Deals 12 cards to each player
+- Sets aside 1 trump card
+- Transitions to the "cardSwap" phase
+- Initializes team scores to [0, 0]
+
+---
+
+## Card Swap Phase
+
+The card swap phase allows strategic coordination with your partner before tricks begin.
+
+### Swap Mechanics
+
+<Steps>
+  <Step title="Review Your Hand">
+    Each player receives 12 cards from the shuffled deck. Cards are automatically sorted by number.
+  </Step>
+  
+  <Step title="Select 3 Cards">
+    Choose exactly 3 cards from your hand to give to your partner.
+  </Step>
+  
+  <Step title="Declare Swap">
+    Submit your selection. You cannot change cards after declaring.
+  </Step>
+  
+  <Step title="Wait for All Players">
+    All 4 players must declare their swaps before the exchange happens.
+  </Step>
+  
+  <Step title="Receive Partner's Cards">
+    Once everyone has declared, you receive 3 cards from your partner.
+  </Step>
+</Steps>
+
+### Swap Rules
+
+From gamestate.js:187-218:
+
+- **Must swap exactly 3 cards** - no more, no less
+- **Cannot swap twice** - once declared, your swap is locked
+- **Must own the cards** - can only swap cards currently in your hand
+- **Cards go to partner** - you swap with the player 2 seats away (across the table)
+
+```javascript
+// Cards are given to partner (2 seats away)
+this.users[(index + 2) % 4].hand.push(...u.toSwap);
+```
+
+<Warning>
+  Once all players have declared their swaps, the exchange happens **automatically**. The game immediately transitions to the in-game phase.
+</Warning>
+
+### Strategic Considerations
+
+<AccordionGroup>
+  <Accordion title="Give Weak Suits">
+    Consider giving cards from suits where you're weak, allowing your partner to control that suit.
+  </Accordion>
+  
+  <Accordion title="Protect Sevens">
+    High-value sevens (Pink, Blue) are usually worth keeping unless they're the trump suit.
+  </Accordion>
+  
+  <Accordion title="Trump Suit Strategy">
+    If you have multiple trump cards, consider keeping them to win tricks. If you have few, swap them to your partner.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## In-Game Phase
+
+The in-game phase is where trick-taking happens. Players take turns playing one card each until the round ends.
+
+### Determining the First Lead Player
+
+At the start of the first round (gamestate.js:236-253):
+
+<Steps>
+  <Step title="Check for Green Ace">
+    If any player has the Green Ace (card 1), they lead first.
+  </Step>
+  
+  <Step title="Check for Blue Seven">
+    If no one has the Green Ace, whoever has Blue Seven (card 49) leads first.
+  </Step>
+  
+  <Step title="Subsequent Rounds">
+    In later rounds, the lead player from the previous round leads again.
+  </Step>
+</Steps>
+
+### Playing Cards
+
+**Turn Order:**
+- The lead player plays first
+- Play continues clockwise around the table
+- Each player plays exactly one card per trick
+
+**Card Play Rules (gamestate.js:254-293):**
+
+<Info>
+  **Must Follow Suit:** If the lead player plays a card of a certain suit, you **must** play a card of that same suit if you have one.
+</Info>
+
+```javascript
+if (this.turn != 0) {
+  const leadSuit = getSuit(this.users[this.leadPlayer].cardPlayed);
+  if (getSuit(card) != leadSuit) {
+    // Check each card in hand
+    for (let i = 0; i < this.users[uIndex].hand.length; i++) {
+      if (getSuit(this.users[uIndex].hand[i]) == leadSuit) {
+        console.log("Cannot short suit if owning lead suit!");
+        return false;
+      }
+    }
+  }
+}
+```
+
+**When You Can't Follow Suit:**
+- If you don't have the lead suit, you can play **any card**
+- This includes trump cards or cards from other suits
+
+### Winning Tricks
+
+After all 4 players have played a card, the trick is evaluated (gamestate.js:26-46):
+
+<Steps>
+  <Step title="Check for Green Ace">
+    If anyone played the Green Ace (card 1), they **automatically win** the trick.
+  </Step>
+  
+  <Step title="Check for Trump Cards">
+    If no Ace was played, check if any trump suit cards were played. The **highest trump card** wins.
+  </Step>
+  
+  <Step title="Highest Lead Suit Card">
+    If no trump cards were played, the **highest card of the lead suit** wins.
+  </Step>
+</Steps>
+
+```javascript
+function evaluateTrick(cards, trump) {
+  // Check for Ace first
+  for (let i = 0; i < cards.length; i++) {
+    if (cards[i] == 1) {
+      return i;
+    }
+  }
+
+  const leadSuit = getSuit(cards[0]);
+  const trumpSuit = getSuit(trump);
+  const trumps = cards.filter((c) => getSuit(c) == trumpSuit);
+
+  if (trumps.length > 0) {
+    return cards.indexOf(Math.max(...trumps));
+  }
+  return cards.indexOf(Math.max(...leads));
+}
+```
+
+<Note>
+  The winner of a trick becomes the lead player for the next trick. The 4 cards from the trick are added to their `tricksWon` array.
+</Note>
+
+### Trick Resolution
+
+After determining the winner (gamestate.js:304-328):
+
+1. All 4 cards are given to the winner
+2. Each player's `cardPlayed` is reset to 0
+3. The winner becomes the new `leadPlayer`
+4. The `turn` counter resets to 0
+5. The next trick begins
+
+---
+
+## Round End Conditions
+
+The game checks after each trick whether the round should end (gamestate.js:401-423).
+
+### End Conditions
+
+A round ends when **any** of these conditions are met:
+
+<CardGroup cols={2}>
+  <Card title="4+ Sevens Collected" icon="seven">
+    One team has collected 4 or more sevens in their tricks
+  </Card>
+  
+  <Card title="7+ Tricks Won" icon="trophy">
+    One team has won 7 or more tricks
+  </Card>
+  
+  <Card title="All 12 Tricks Played" icon="check">
+    All 12 tricks have been played (every player's hand is empty)
+  </Card>
+</CardGroup>
+
+```javascript
+if (
+  team1sevens < 4 &&
+  team2sevens < 4 &&
+  team1trickCount < 7 &&
+  team2trickCount < 7 &&
+  team1trickCount + team2trickCount < 12
+) {
+  return false; // Round continues
+}
+```
+
+### What Happens at Round End
+
+<Steps>
+  <Step title="Scoring">
+    Points are calculated based on the end condition (see Scoring page for details)
+  </Step>
+  
+  <Step title="Reset Round State">
+    All players' hands, tricksWon, and toSwap arrays are cleared
+  </Step>
+  
+  <Step title="New Round Begins">
+    Cards are dealt again and the game returns to the cardSwap phase
+  </Step>
+  
+  <Step title="Lead Player Preserved">
+    The lead player from the previous round leads in the new round
+  </Step>
+</Steps>
+
+<Info>
+  Team scores are **cumulative** across rounds. The lead player position is **preserved** between rounds.
+</Info>

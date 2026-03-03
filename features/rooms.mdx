@@ -1,0 +1,186 @@
+---
+title: 'Room System'
+description: 'Create and join game rooms with unique room codes'
+---
+
+## Overview
+
+Yokai Septet Online uses a **room-based system** where players create or join game rooms using unique room codes. Each room supports exactly 4 players and maintains its own isolated game state.
+
+## Creating a Room
+
+<Steps>
+  <Step title="Click Create Room">
+    From the home screen, click the "Create Room" button.
+  </Step>
+
+  <Step title="Room Generated">
+    The server generates a unique 10-character room ID and creates a new game state.
+
+    ```javascript
+    // Server generates unique room ID
+    socket.on("create", (callback) => {
+      do {
+        roomId = uuidv4().replace(/-/g, "").slice(0, 10); 
+      } while (activeRooms.has(roomId)); 
+
+      activeRooms.add(roomId);
+      socket.join(roomId);
+      createRoom(roomId);
+      
+      // Add user to room
+      const { user } = addUser({ socketId: socket.id, roomId });
+      
+      callback({ roomId, username: user.name, id: user.id });
+    });
+    ```
+  </Step>
+
+  <Step title="Navigate to Room">
+    You're automatically redirected to the room lobby where you can share the room code with friends.
+  </Step>
+</Steps>
+
+<Note>
+  Room IDs are guaranteed to be unique - the server checks for collisions before creating a room.
+</Note>
+
+## Joining a Room
+
+<Steps>
+  <Step title="Click Join Room">
+    From the home screen, click "Join Room" and enter the room code provided by your friend.
+  </Step>
+
+  <Step title="Server Validation">
+    The server checks if the room exists before allowing you to join.
+
+    ```javascript
+    socket.on("join", ({roomId}, callback) => {
+      // Check if room exists
+      const room = getUsersInRoom(roomId);
+      
+      if (room.length === 0) {
+        return callback({ error: "Room does not exist" });
+      }
+      
+      // Add user to room
+      const { user } = addUser({ socketId: socket.id, roomId });
+      socket.join(user.roomId);
+      
+      // Notify other players
+      socket.in(roomId).emit("notification", `${user.name} has joined the room`);
+      io.in(roomId).emit("users", getUsersInRoom(user.roomId));
+      
+      callback({ username: user.name, id: user.id });
+    })
+    ```
+  </Step>
+
+  <Step title="Join Lobby">
+    Upon successful join, you enter the room lobby with other players.
+  </Step>
+</Steps>
+
+## Room Code Sharing
+
+The room interface displays the room code with a convenient copy button:
+
+```tsx
+<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+  <Typography variant="h6">Room ID: {roomId}</Typography>
+  <IconButton
+    color="primary"
+    onClick={() => navigator.clipboard.writeText(roomId)}
+  >
+    <ContentCopyIcon />
+  </IconButton>
+</Box>
+```
+
+Players can click the copy icon to instantly copy the room code and share it via any messaging platform.
+
+## Room Lifecycle
+
+<Steps>
+  <Step title="Creation">
+    Room created when first player clicks "Create Room"
+    - Unique room ID generated
+    - Game state initialized in lobby mode
+    - Creator joins automatically
+  </Step>
+
+  <Step title="Lobby">
+    Players join and prepare:
+    - Change teams (Team 1 or Team 2)
+    - Change display names
+    - Chat with other players
+    - Wait for 4 players total
+  </Step>
+
+  <Step title="Active Game">
+    Game starts when host clicks "Start Game" with exactly 4 players:
+    - Team assignments locked
+    - Cards dealt
+    - Game state transitions from "lobby" to "cardSwap"
+  </Step>
+
+  <Step title="Completion">
+    Game ends when one team reaches the winning score
+  </Step>
+</Steps>
+
+## Room Isolation
+
+Each room maintains complete isolation:
+
+- **Separate game state**: Each room has its own deck, scores, and turn order
+- **Independent chat**: Messages only visible to players in the same room
+- **Event scoping**: Socket events only broadcast to players in the room
+
+```javascript
+// Events sent only to specific room
+io.in(roomId).emit("users", getUsersInRoom(roomId));
+socket.in(roomId).emit("notification", `${user.name} has joined`);
+```
+
+## Leaving a Room
+
+Players can leave at any time by clicking "Leave Room":
+
+```typescript
+const handleLeaveRoom = () => {
+  removeLocalUserID();
+  socket.emit("leaveRoom", storedUserId);
+  navigate("/");
+};
+```
+
+```javascript
+// Server handles player leaving
+socket.on("leaveRoom", (userId) => {
+  const user = removeUser(userId);
+  if (user) {
+    io.in(user.roomId).emit("notification", `${user.name} has left the room`)
+    io.in(user.roomId).emit("users", getUsersInRoom(user.roomId))
+  }
+})
+```
+
+<Note>
+  If a player leaves during an active game, other players will be notified. The game may need to be restarted if a player leaves mid-game.
+</Note>
+
+## Error Handling
+
+<CardGroup cols={2}>
+  <Card title="Room Not Found" icon="triangle-exclamation">
+    If you try to join a non-existent room code, you'll see an error message:
+    
+    `"Room does not exist"`
+  </Card>
+
+  <Card title="Invalid Room Code" icon="xmark">
+    The UI validates room codes before attempting to join, preventing unnecessary server requests.
+  </Card>
+</CardGroup>

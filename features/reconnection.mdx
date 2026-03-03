@@ -1,0 +1,262 @@
+---
+title: 'Player Reconnection'
+description: 'Automatic reconnection when players lose connection or refresh'
+---
+
+## Overview
+
+Yokai Septet Online includes **automatic reconnection** support that allows players to rejoin games seamlessly if they refresh the page, lose connection temporarily, or close their browser.
+
+## How It Works
+
+<Steps>
+  <Step title="Session Storage">
+    When you join or create a room, your user ID is saved to browser storage.
+
+    ```typescript
+    // Save user ID when joining room
+    setLocalUserID(response.id);
+    ```
+
+    ```typescript
+    // Storage helper functions
+    export const setLocalUserID = (userId: string) => {
+      sessionStorage.setItem('userId', userId);
+    };
+
+    export const getLocalUserID = () => {
+      return sessionStorage.getItem('userId') || '';
+    };
+    ```
+  </Step>
+
+  <Step title="Connection Lost">
+    If you refresh the page or lose connection, the Socket.io connection is broken.
+  </Step>
+
+  <Step title="Automatic Reconnection">
+    When the page reloads, the client checks for a stored user ID and automatically attempts to reconnect.
+
+    ```typescript
+    const storedUserId = getLocalUserID();
+
+    if (storedUserId) {
+      socket.emit(
+        "reconnect",
+        { roomId, userId: storedUserId },
+        (response) => {
+          if (response.error) {
+            console.error(response.error);
+            removeLocalUserID(); // Clear invalid session
+          } else {
+            console.log(`${response.username} reconnected successfully`);
+          }
+        }
+      );
+    }
+    ```
+  </Step>
+
+  <Step title="Session Restored">
+    Your game state, team, name, and position are all restored.
+  </Step>
+</Steps>
+
+## Server Reconnection Logic
+
+The server handles reconnection requests by validating the user and room:
+
+```javascript
+socket.on("reconnect", ({ roomId, userId }, callback) => {
+  console.log(`User ${userId} is attempting to reconnect to room ${roomId}`);
+
+  // Check if room exists
+  const room = getUsersInRoom(roomId);
+  if (room.length === 0) {
+    return callback?.({ error: "Room does not exist" });
+  }
+
+  // Check if user exists
+  const user = getUser(userId);
+  if (!user) {
+    return callback?.({ error: "User not found. Please rejoin." });
+  }
+
+  // Rejoin the room
+  socket.join(roomId);
+  console.log(`User ${user.name} reconnected to room ${roomId}`);
+  
+  // Update socket ID (important: new WebSocket connection = new socket ID)
+  user.socketId = socket.id;
+
+  // Send previous messages to catch up
+  const previousMessages = getMessages(roomId);
+  socket.emit("previousMessages", previousMessages);
+
+  // Notify others
+  socket.in(roomId).emit("notification", `${user.name} has reconnected`);
+  io.in(roomId).emit("users", getUsersInRoom(roomId));
+
+  callback?.({ username: user.name, id: user.id });
+});
+```
+
+<Note>
+  **Socket ID vs User ID**: When you reconnect, you get a new Socket.io connection (new `socket.id`), but your user ID remains the same. The server updates your socket ID while preserving your game state.
+</Note>
+
+## What Gets Restored
+
+When you successfully reconnect:
+
+<CardGroup cols={2}>
+  <Card title="Player Identity" icon="user">
+    - Display name
+    - User ID
+    - Team assignment
+  </Card>
+
+  <Card title="Game State" icon="gamepad">
+    - Current hand of cards
+    - Tricks won
+    - Game phase (lobby/cardSwap/inGame)
+  </Card>
+
+  <Card title="Room Context" icon="door-open">
+    - Room ID
+    - Other players in room
+    - Current scores
+  </Card>
+
+  <Card title="Chat History" icon="comments">
+    - Previous messages
+    - Notifications
+  </Card>
+</CardGroup>
+
+## Reconnection Flow Diagram
+
+```
+Page Refresh/Connection Lost
+        ↓
+Check sessionStorage for userId
+        ↓
+   Found userId?
+        ↓
+   YES → Emit "reconnect" event
+        ↓
+Server validates room & user
+        ↓
+   Valid session?
+        ↓
+   YES → Update socketId
+        → Send game state
+        → Send chat history
+        → Notify other players
+        → Reconnection successful!
+```
+
+## Error Handling
+
+### Room No Longer Exists
+
+If the room has been closed or expired:
+
+```javascript
+if (room.length === 0) {
+  return callback?.({ error: "Room does not exist" });
+}
+```
+
+The client clears the stored user ID and redirects to home:
+
+```typescript
+if (response.error) {
+  console.error(response.error);
+  removeLocalUserID(); // Clear session
+  // User must create/join a new room
+}
+```
+
+### User Not Found
+
+If the user has been removed from the server (e.g., server restart):
+
+```javascript
+if (!user) {
+  return callback?.({ error: "User not found. Please rejoin." });
+}
+```
+
+<Note>
+  If the server restarts, all in-memory user data is lost. Players will need to rejoin rooms manually in this case.
+</Note>
+
+## Chat History Sync
+
+Upon reconnection, you receive all messages sent while you were disconnected:
+
+```javascript
+// Send previous messages
+const previousMessages = getMessages(roomId);
+socket.emit("previousMessages", previousMessages);
+```
+
+```typescript
+// Client receives and displays messages
+socket.on("previousMessages", (previousMessages: Message[]) => {
+  console.log("Previous messages received:", previousMessages);
+  setMessages(previousMessages);
+});
+```
+
+This ensures you don't miss any conversation or game-related notifications.
+
+## Notifications
+
+When a player reconnects, all other players in the room are notified:
+
+```javascript
+socket.in(roomId).emit("notification", `${user.name} has reconnected`);
+```
+
+These notifications appear in the chat area, keeping everyone informed about connection status.
+
+## Session Persistence
+
+**Session Storage** is used instead of Local Storage:
+
+```typescript
+export const setLocalUserID = (userId: string) => {
+  sessionStorage.setItem('userId', userId);
+};
+```
+
+**Why sessionStorage?**
+- Clears when browser tab is closed (security)
+- Persists across page refreshes (convenience)
+- Isolated per browser tab (prevents conflicts)
+
+<Note>
+  If you close the browser tab completely, your session ends and you'll need to rejoin the room. This is intentional to prevent abandoned players from occupying room slots.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Stable Connection" icon="wifi">
+    Play on a stable internet connection to minimize disconnections during critical game moments.
+  </Card>
+
+  <Card title="Quick Refresh" icon="rotate">
+    If the game UI becomes unresponsive, refresh the page - you'll automatically rejoin.
+  </Card>
+
+  <Card title="Notification Awareness" icon="bell">
+    Watch for reconnection notifications to know when other players have connectivity issues.
+  </Card>
+
+  <Card title="Session Limits" icon="clock">
+    Sessions persist only while the browser tab is open. Closing the tab ends your session.
+  </Card>
+</CardGroup>

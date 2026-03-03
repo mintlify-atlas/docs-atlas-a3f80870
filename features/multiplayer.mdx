@@ -1,0 +1,141 @@
+---
+title: 'Real-time Multiplayer'
+description: 'Real-time multiplayer gameplay powered by Socket.io'
+---
+
+## Overview
+
+Yokai Septet Online uses **Socket.io** to enable real-time multiplayer gameplay. The WebSocket-based architecture ensures instant communication between players, creating a smooth, synchronized gaming experience.
+
+## How It Works
+
+<Steps>
+  <Step title="WebSocket Connection">
+    When a player opens the game, a Socket.io connection is automatically established to the server.
+
+    ```typescript
+    // Socket connection initialization
+    const socket = io("ws://localhost:3002", {
+      transports: ["websocket", "polling"],
+    });
+    ```
+  </Step>
+
+  <Step title="Event-Based Communication">
+    All game actions (playing cards, swapping cards, team changes) are transmitted through Socket.io events.
+
+    The server listens for events and broadcasts updates to all players in the room.
+  </Step>
+
+  <Step title="Real-time State Synchronization">
+    Game state is synchronized across all clients, ensuring everyone sees the same board, cards, and scores.
+  </Step>
+</Steps>
+
+## Core Socket Events
+
+The multiplayer system relies on several key Socket.io events:
+
+<CardGroup cols={2}>
+  <Card title="Room Management" icon="door-open">
+    - `create` - Create a new game room
+    - `join` - Join an existing room
+    - `leaveRoom` - Leave the current room
+  </Card>
+
+  <Card title="Game Actions" icon="gamepad">
+    - `startGame` - Begin the game (requires 4 players)
+    - `playCard` - Play a card during your turn
+    - `swapCards` - Exchange cards with partner
+  </Card>
+
+  <Card title="Player Updates" icon="users">
+    - `changeTeam` - Switch between Team 1 and Team 2
+    - `changeName` - Update your display name
+    - `users` - Receive list of players in room
+  </Card>
+
+  <Card title="Communication" icon="comments">
+    - `sendMessage` - Send chat messages
+    - `message` - Receive chat updates
+    - `notification` - System notifications
+  </Card>
+</CardGroup>
+
+## Game State Broadcasting
+
+When game state changes (cards played, tricks won, rounds completed), the server sends updates to all clients:
+
+```javascript
+// Server broadcasts game state to all players in room
+function sendGameState(roomId) {
+  const users = getUsersInRoom(roomId);
+  const roomData = getRoom(roomId);
+
+  users.forEach(user => {
+    io.to(user.socketId).emit("gameState", roomData)
+  });
+}
+```
+
+```typescript
+// Client listens for game state updates
+socket.on("gameState", (gameState: GameState) => {
+  // Update local game state
+  // Render cards, scores, player turns
+});
+```
+
+<Note>
+  The game state is personalized for each player - the server sends the same game data, but clients render it from their perspective (showing their hand, positioning opponents correctly).
+</Note>
+
+## Real-time Gameplay Flow
+
+1. **Player plays a card**: Client emits `playCard` event with card index
+2. **Server validates**: Checks if it's the player's turn and the move is legal
+3. **Server updates state**: Updates the game state with the played card
+4. **Broadcast to all**: Server sends updated `gameState` to all players in the room
+5. **Clients render**: All players see the card appear on the table simultaneously
+
+## Performance
+
+Socket.io provides efficient real-time communication:
+- **Low latency**: WebSocket protocol minimizes delay
+- **Automatic fallback**: Falls back to polling if WebSocket unavailable
+- **Room isolation**: Events only sent to players in the same room
+
+## Example: Playing a Card
+
+```typescript
+// Client emits playCard event
+socket.emit("playCard", {
+  userId: getLocalUserID(),
+  cardIndex: cardIndex,
+});
+```
+
+```javascript
+// Server handles the event
+socket.on("playCard", ({userId, cardIndex}) => {
+  const user = getUser(userId);
+  const room = getRoom(user.roomId);
+  
+  const result = room.playCardIndex(userId, cardIndex);
+  
+  // Broadcast updated state to all players
+  sendGameState(user.roomId);
+  
+  // Check if trick is complete
+  if (room.checkTrickEnd()) {
+    setTimeout(() => {
+      room.resolveTrick();
+      sendGameState(user.roomId);
+    }, 1000)
+  }
+})
+```
+
+<Note>
+  Notice the 1-second delay before resolving tricks - this gives players time to see all four cards before the trick winner is determined.
+</Note>

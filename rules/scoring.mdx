@@ -1,0 +1,265 @@
+---
+title: Scoring System
+description: Understand how points are calculated based on sevens, tricks, and win conditions
+---
+
+## Scoring Overview
+
+Yokai Septet Online has a unique scoring system where **only sevens score points**, and the team that scores depends on how the round ended.
+
+<Warning>
+  Counter-intuitively, winning 7+ tricks causes the **opposing team** to score! Strategic play involves balancing seven collection with trick control.
+</Warning>
+
+---
+
+## Seven Values
+
+Each seven (rank 7 card) has a base point value determined by its suit:
+
+| Suit | Seven Card | Base Value |
+|------|------------|------------|
+| Green | Card 7 | 0 points |
+| Purple | Card 14 | 0 points |
+| Yellow | Card 21 | 1 point |
+| Red | Card 28 | 1 point |
+| Orange | Card 35 | 1 point |
+| Pink | Card 42 | 2 points |
+| Blue | Card 49 | 2 points |
+
+### Trump Suit Exception
+
+<Info>
+  If a seven belongs to the **trump suit**, it scores **0 points** regardless of its base value.
+</Info>
+
+From gamestate.js:347-356:
+
+```javascript
+scoreSevens(sevens) {
+  const trumpSuit = getSuit(this.trumpCard);
+  let score = 0;
+
+  sevens.forEach((c) => {
+    score += getSuit(c) == trumpSuit ? 0 : [0, 0, 1, 1, 1, 2, 2][getSuit(c) - 1];
+  });
+  return score;
+}
+```
+
+The scoring array `[0, 0, 1, 1, 1, 2, 2]` maps to suits 1-7 (Green through Blue).
+
+---
+
+## Round End Scoring
+
+Scoring depends entirely on **how the round ended**. The `doScoring()` function (gamestate.js:369-398) handles all three end conditions.
+
+### Condition 1: Team Collects 4+ Sevens
+
+<Card title="Winner Scores Their Sevens" icon="trophy">
+  **If your team collects 4 or more sevens**, the round ends immediately and your team scores points for all the sevens you collected.
+</Card>
+
+```javascript
+if (team1sevensCount >= 4) {
+  this.scores[0] += this.scoreSevens(team1sevens);
+} else if (team2sevensCount >= 4) {
+  this.scores[1] += this.scoreSevens(team2sevens);
+}
+```
+
+**Example:**
+- Team 1 collects: Yellow 7 (1pt), Red 7 (1pt), Pink 7 (2pt), Blue 7 (2pt)
+- Trump suit is Green (doesn't affect these sevens)
+- **Team 1 scores: 6 points**
+
+---
+
+### Condition 2: Team Wins 7+ Tricks
+
+<Warning>
+  **If your team wins 7 or more tricks**, the **opposing team** scores! They score for both their collected sevens AND any sevens left in your hands.
+</Warning>
+
+This creates a critical strategic balance: you want to win tricks to collect sevens, but winning too many tricks gives points to your opponent.
+
+```javascript
+else if (team2trickCount >= 7) {
+  this.scores[0] += this.scoreSevens(team1sevens);
+  this.scores[0] += this.scoreSevens(
+    this.users[1].hand.concat(this.users[3].hand)
+      .filter((v) => getRank(v) == 7)
+  );
+} else if (team1trickCount >= 7) {
+  this.scores[1] += this.scoreSevens(team2sevens);
+  this.scores[1] += this.scoreSevens(
+    this.users[0].hand.concat(this.users[2].hand)
+      .filter((v) => getRank(v) == 7)
+  );
+}
+```
+
+**Scoring Breakdown:**
+1. Opposing team scores for sevens they collected in tricks
+2. Opposing team scores for sevens still in your team's hands
+
+**Example:**
+- Team 1 wins 8 tricks (round ends)
+- Team 2 collected: Yellow 7 (1pt) in their tricks
+- Team 1 still holds: Pink 7 (2pt), Blue 7 (2pt) in their hands
+- **Team 2 scores: 1 + 2 + 2 = 5 points** (even though they only won 4 tricks!)
+
+<Note>
+  This is why protecting your sevens is crucial. If you're winning many tricks, consider using your sevens early to prevent giving them to the opponent.
+</Note>
+
+---
+
+### Condition 3: All 12 Tricks Played
+
+<Card title="Last Trick Winner's Team Scores" icon="cards">
+  If all 12 tricks are played without either team reaching 4 sevens or 7 tricks, the team that won the **final trick** scores for their collected sevens.
+</Card>
+
+```javascript
+else {
+  // lead player team wins
+  if (this.leadPlayer % 2 == 0) {
+    this.scores[0] += this.scoreSevens(team1sevens);
+  } else {
+    this.scores[1] += this.scoreSevens(team2sevens);
+  }
+}
+```
+
+**How it works:**
+- After the 12th trick is resolved, `leadPlayer` is set to the winner of that trick
+- If `leadPlayer` is 0 or 2 (Team 1), Team 1 scores
+- If `leadPlayer` is 1 or 3 (Team 2), Team 2 scores
+- Only that team's collected sevens count
+
+**Example:**
+- After 12 tricks: Team 1 has 3 sevens (5 pts), Team 2 has 2 sevens (3 pts)
+- Team 2 wins the final trick
+- **Team 2 scores: 3 points** (their sevens only)
+- Team 1's sevens don't count
+
+---
+
+## Counting Sevens and Tricks
+
+### Counting Sevens for a Team
+
+From gamestate.js:358-367:
+
+```javascript
+getSevens(teamNumber) {
+  const cardsWon = this.users[teamNumber - 1].tricksWon
+    .flat()
+    .concat(this.users[teamNumber + 1].tricksWon.flat());
+  return cardsWon.filter((v) => getRank(v) == 7);
+}
+
+countSevens(teamNumber) {
+  return this.getSevens(teamNumber).length;
+}
+```
+
+- Team 1 = players at indices 0 and 2
+- Team 2 = players at indices 1 and 3
+- All cards from both teammates' tricks are combined
+- Only cards with rank 7 are counted
+
+### Counting Tricks for a Team
+
+From gamestate.js:341-346:
+
+```javascript
+countTricks(teamNumber) {
+  return (
+    this.users[teamNumber - 1].tricksWon.length +
+    this.users[teamNumber + 1].tricksWon.length
+  );
+}
+```
+
+Each trick won adds one entry to a player's `tricksWon` array. The team's total is the sum of both teammates' trick counts.
+
+---
+
+## Strategic Implications
+
+<AccordionGroup>
+  <Accordion title="The 7-Trick Danger Zone">
+    Winning 7+ tricks gives all points to your opponent. If you're at 5-6 tricks with good sevens collected, consider **intentionally losing** subsequent tricks to avoid crossing the threshold.
+  </Accordion>
+  
+  <Accordion title="Racing to 4 Sevens">
+    Collecting 4 sevens ends the round immediately and you score. This is often the safest win condition since you control when the round ends.
+  </Accordion>
+  
+  <Accordion title="Trump Suit Devaluation">
+    If the trump suit is Pink or Blue, those high-value sevens become worthless (0 points). Adjust your strategy to focus on other sevens.
+  </Accordion>
+  
+  <Accordion title="Final Trick Control">
+    In close rounds heading toward 12 tricks, controlling the final trick determines which team scores. Save strong cards for trick 12.
+  </Accordion>
+  
+  <Accordion title="Playing Sevens Early">
+    If your team is winning many tricks (approaching 7), play your sevens early in tricks you'll likely lose. This prevents giving their value to the opponent.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Maximum Possible Points
+
+Let's calculate the theoretical maximum points in a single round:
+
+**All seven base values (no trump):**
+- Green: 0
+- Purple: 0  
+- Yellow: 1
+- Red: 1
+- Orange: 1
+- Pink: 2
+- Blue: 2
+
+**Total: 7 points**
+
+<Info>
+  The maximum score in a single round is **7 points** when a team collects all sevens and none are trump suit.
+</Info>
+
+**Best case scenario for high scoring:**
+1. Trump suit is Green or Purple (their sevens are already 0)
+2. Your team collects all 7 sevens
+3. Round ends via the 4-seven rule
+4. You score: 0 + 0 + 1 + 1 + 1 + 2 + 2 = **7 points**
+
+**Worst case for the opponent (7-trick rule):**
+1. Your team wins 7+ tricks while holding high-value sevens
+2. Opponent collected valuable sevens in their few tricks
+3. Opponent scores both their sevens AND yours
+4. They could score up to **7 points** while only winning 5 tricks!
+
+---
+
+## Score Tracking
+
+From gamestate.js:58, 155:
+
+```javascript
+this.scores = [0, 0];
+```
+
+- `scores[0]` = Team 1's cumulative score
+- `scores[1]` = Team 2's cumulative score
+- Scores persist across rounds
+- First team to reach the target score wins the game
+
+<Note>
+  The target score for winning the game is not defined in the provided source code. This may be configurable or set at a higher level.
+</Note>

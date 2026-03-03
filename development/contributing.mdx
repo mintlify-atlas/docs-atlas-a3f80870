@@ -1,0 +1,450 @@
+---
+title: Contributing Guide
+description: How to contribute to Yokai Septet Online
+---
+
+## Welcome Contributors!
+
+Thank you for your interest in contributing to Yokai Septet Online! This guide will help you get started with contributing to the project.
+
+## Getting Started
+
+Before you begin contributing, make sure you have:
+
+<Steps>
+  <Step title="Set up your development environment">
+    Follow the setup guides:
+    - [Client Setup](/development/client-setup)
+    - [Server Setup](/development/server-setup)
+  </Step>
+  
+  <Step title="Understand the architecture">
+    Read the [Architecture Overview](/development/architecture) to understand how the system works.
+  </Step>
+  
+  <Step title="Fork the repository">
+    Fork the repository on GitHub to your own account.
+  </Step>
+  
+  <Step title="Clone your fork">
+    ```bash
+    git clone https://github.com/YOUR-USERNAME/yokai-septet-online.git
+    cd yokai-septet-online
+    ```
+  </Step>
+</Steps>
+
+## Development Workflow
+
+### 1. Create a Branch
+
+Create a new branch for your feature or bug fix:
+
+```bash
+git checkout -b feature/your-feature-name
+```
+
+<Tabs>
+  <Tab title="Feature">
+    ```bash
+    git checkout -b feature/add-new-game-mode
+    ```
+  </Tab>
+  
+  <Tab title="Bug Fix">
+    ```bash
+    git checkout -b fix/card-swap-bug
+    ```
+  </Tab>
+  
+  <Tab title="Documentation">
+    ```bash
+    git checkout -b docs/update-readme
+    ```
+  </Tab>
+</Tabs>
+
+### 2. Make Your Changes
+
+#### Code Style
+
+Follow the existing code style in the project:
+
+<CodeGroup>
+```typescript Client (TypeScript/React)
+// Use functional components with TypeScript
+import React from 'react';
+
+interface Props {
+  userName: string;
+  onAction: () => void;
+}
+
+const MyComponent: React.FC<Props> = ({ userName, onAction }) => {
+  return (
+    <div>
+      <h1>Welcome {userName}</h1>
+      <button onClick={onAction}>Click me</button>
+    </div>
+  );
+};
+
+export default MyComponent;
+```
+
+```javascript Server (Node.js)
+// Use clear, descriptive function names
+function handleUserJoin(socket, roomId, callback) {
+  const room = getUsersInRoom(roomId);
+  
+  if (room.length === 0) {
+    return callback({ error: "Room does not exist" });
+  }
+  
+  // Add user and emit updates
+  const { user, error } = addUser({ 
+    socketId: socket.id, 
+    roomId 
+  });
+  
+  if (error) return callback(error);
+  
+  socket.join(user.roomId);
+  io.in(roomId).emit("users", getUsersInRoom(roomId));
+  
+  callback({ username: user.name, id: user.id });
+}
+```
+</CodeGroup>
+
+#### Linting
+
+Run the linter before committing:
+
+```bash
+# In the client directory
+cd client
+npm run lint
+```
+
+### 3. Test Your Changes
+
+Thoroughly test your changes before submitting:
+
+<Tabs>
+  <Tab title="Manual Testing">
+    1. Start both client and server:
+    ```bash
+    # Terminal 1
+    cd server && npm run dev
+    
+    # Terminal 2
+    cd client && npm run dev
+    ```
+    
+    2. Test the feature in multiple browser windows
+    3. Verify all game states work correctly
+    4. Check the browser console for errors
+  </Tab>
+  
+  <Tab title="Automated Tests">
+    If you're adding tests (encouraged!):
+    
+    ```bash
+    # Run server tests
+    cd server
+    npm test
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Always test with multiple clients (4 players) for game-related changes, as the game requires exactly 4 players.
+</Warning>
+
+### 4. Commit Your Changes
+
+Write clear, descriptive commit messages:
+
+<CodeGroup>
+```bash Good Commit Messages
+# Feature
+git commit -m "Add card animation when playing cards"
+
+# Bug fix
+git commit -m "Fix card swap not working for team 2"
+
+# Refactor
+git commit -m "Refactor GameState to use ES6 classes"
+
+# Documentation
+git commit -m "Update README with deployment instructions"
+```
+
+```bash Bad Commit Messages
+# Too vague
+git commit -m "Fix bug"
+git commit -m "Update code"
+git commit -m "Changes"
+```
+</CodeGroup>
+
+### 5. Push and Create Pull Request
+
+<Steps>
+  <Step title="Push your branch">
+    ```bash
+    git push origin feature/your-feature-name
+    ```
+  </Step>
+  
+  <Step title="Create Pull Request">
+    Go to GitHub and create a Pull Request from your fork to the main repository.
+  </Step>
+  
+  <Step title="Fill out PR template">
+    Provide a clear description of:
+    - What changes you made
+    - Why you made them
+    - How to test the changes
+    - Any screenshots or videos (for UI changes)
+  </Step>
+</Steps>
+
+## Contribution Guidelines
+
+### What to Contribute
+
+We welcome contributions in these areas:
+
+<CardGroup cols={2}>
+  <Card title="Bug Fixes" icon="bug">
+    Fix issues in game logic, UI, or server functionality
+  </Card>
+  
+  <Card title="New Features" icon="plus">
+    Add new game modes, UI improvements, or functionality
+  </Card>
+  
+  <Card title="Performance" icon="gauge-high">
+    Optimize client rendering or server performance
+  </Card>
+  
+  <Card title="Documentation" icon="book">
+    Improve docs, add examples, or write tutorials
+  </Card>
+  
+  <Card title="Tests" icon="vial">
+    Add unit tests or integration tests
+  </Card>
+  
+  <Card title="Refactoring" icon="code">
+    Improve code quality and maintainability
+  </Card>
+</CardGroup>
+
+### Code Review Process
+
+After submitting a PR:
+
+1. **Automated Checks** - CI/CD will run linting and tests
+2. **Code Review** - Maintainers will review your code
+3. **Feedback** - You may be asked to make changes
+4. **Approval** - Once approved, your PR will be merged
+
+### Best Practices
+
+<AccordionGroup>
+  <Accordion title="Keep PRs focused">
+    - One feature or bug fix per PR
+    - Avoid mixing unrelated changes
+    - Smaller PRs are easier to review
+  </Accordion>
+  
+  <Accordion title="Write descriptive code">
+    - Use meaningful variable and function names
+    - Add comments for complex logic
+    - Keep functions small and focused
+    
+    ```javascript
+    // Good
+    function calculateTeamScore(teamNumber, gameState) {
+      const sevens = gameState.getSevens(teamNumber);
+      return gameState.scoreSevens(sevens);
+    }
+    
+    // Bad
+    function calc(n, gs) {
+      const s = gs.getSevens(n);
+      return gs.scoreSevens(s);
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Update documentation">
+    If you:
+    - Add new features → Update relevant docs
+    - Change APIs → Update API documentation
+    - Fix bugs → Add to changelog
+  </Accordion>
+  
+  <Accordion title="Handle errors gracefully">
+    Always validate input and handle errors:
+    
+    ```javascript
+    // Good
+    socket.on("playCard", ({userId, cardIndex}) => {
+      const user = getUser(userId);
+      if (!user) {
+        console.error(`User ${userId} not found`);
+        return;
+      }
+      
+      const room = getRoom(user.roomId);
+      if (!room) {
+        console.error(`Room ${user.roomId} not found`);
+        return;
+      }
+      
+      const result = room.playCardIndex(userId, cardIndex);
+      if (!result) {
+        console.log("Invalid card play");
+        return;
+      }
+      
+      sendGameState(user.roomId);
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Areas for Contribution
+
+Here are some specific areas where contributions are especially welcome:
+
+### Client Improvements
+
+- **UI/UX Enhancements**
+  - Improve card animations
+  - Add sound effects
+  - Better mobile responsiveness
+  - Dark mode support
+
+- **Features**
+  - Spectator mode
+  - Game replay functionality
+  - Player statistics
+  - Achievement system
+
+### Server Improvements
+
+- **Testing**
+  - Unit tests for `gamestate.js`
+  - Integration tests for Socket.io events
+  - Load testing
+
+- **Features**
+  - Room password protection
+  - Game history storage
+  - Player ranking system
+  - Anti-cheat measures
+
+### Documentation
+
+- **Guides**
+  - How to play tutorial
+  - Advanced game strategies
+  - Deployment guides
+  - Video tutorials
+
+- **API Documentation**
+  - Socket.io event reference
+  - GameState class documentation
+  - Client API documentation
+
+## Getting Help
+
+If you need help while contributing:
+
+- **Check existing documentation** - Start with the [Architecture Overview](/development/architecture)
+- **Read the code** - The codebase is well-structured and commented
+- **Open an issue** - Ask questions or discuss ideas
+- **Join discussions** - Participate in GitHub Discussions
+
+## Recognition
+
+All contributors will be:
+- Listed in the project's contributors page
+- Credited in release notes for significant contributions
+- Invited to provide input on project direction
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the same license as the project.
+
+---
+
+## Quick Reference
+
+<Tabs>
+  <Tab title="Common Commands">
+    ```bash
+    # Start development
+    cd server && npm run dev  # Terminal 1
+    cd client && npm run dev  # Terminal 2
+    
+    # Lint code
+    cd client && npm run lint
+    
+    # Build for production
+    cd client && npm run build
+    
+    # Create branch
+    git checkout -b feature/my-feature
+    
+    # Commit and push
+    git add .
+    git commit -m "Add my feature"
+    git push origin feature/my-feature
+    ```
+  </Tab>
+  
+  <Tab title="File Locations">
+    ```plaintext
+    Key files for development:
+    
+    # Client
+    client/src/pages/          # UI components
+    client/src/providers/      # React context
+    client/src/utils/          # Utilities
+    client/src/types.ts        # Type definitions
+    
+    # Server  
+    server/server.js           # Main server
+    server/gamestate.js        # Game logic
+    server/room.js             # Room management
+    server/users.js            # User management
+    ```
+  </Tab>
+  
+  <Tab title="Socket Events">
+    ```javascript
+    // Most commonly modified events
+    
+    // Room events
+    socket.on("create", ...)
+    socket.on("join", ...)
+    
+    // Game events
+    socket.on("startGame", ...)
+    socket.on("playCard", ...)
+    socket.on("swapCards", ...)
+    
+    // Emitted events
+    io.emit("gameState", ...)
+    io.emit("users", ...)
+    ```
+  </Tab>
+</Tabs>
+
+Thank you for contributing to Yokai Septet Online!

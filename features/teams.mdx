@@ -1,0 +1,252 @@
+---
+title: 'Team Selection'
+description: 'Team assignment and lobby mechanics before game starts'
+---
+
+## Overview
+
+Yokai Septet is a **team-based card game** where players are divided into two teams of 2 players each. Before the game starts, players wait in a lobby where they can choose their team and customize their display name.
+
+## Lobby Interface
+
+When players join a room, they enter the lobby where they can see:
+
+- **Player count**: Current players vs. required players (X/4)
+- **Team 1 roster**: Players who have joined Team 1
+- **Team 2 roster**: Players who have joined Team 2
+- **Name customization**: Change your display name
+- **Chat**: Communicate with other players
+
+```tsx
+<Typography variant="h5">
+  Waiting for players... ({users?.length}/4)
+</Typography>
+<Typography variant="h6">Team Selection</Typography>
+```
+
+## Joining a Team
+
+<Steps>
+  <Step title="View Available Teams">
+    The lobby displays both teams with "Join" buttons.
+
+    ```tsx
+    <Box>
+      <Typography variant="h6">Team 1</Typography>
+      <Button variant="contained" onClick={() => handleChangeTeam(1)}>
+        Join
+      </Button>
+      {/* Display Team 1 players */}
+    </Box>
+
+    <Box>
+      <Typography variant="h6">Team 2</Typography>
+      <Button variant="contained" onClick={() => handleChangeTeam(2)}>
+        Join
+      </Button>
+      {/* Display Team 2 players */}
+    </Box>
+    ```
+  </Step>
+
+  <Step title="Click Join Button">
+    Click the "Join" button next to the team you want to join.
+  </Step>
+
+  <Step title="Server Updates Team">
+    The server updates your team assignment and broadcasts the change to all players.
+
+    ```javascript
+    socket.on("changeTeam", ({userId, team}) => {
+      const user = getUser(userId);
+      if (!user) return;
+      
+      user.team = team;
+      io.to(user.roomId).emit("users", getUsersInRoom(user.roomId));
+    })
+    ```
+  </Step>
+
+  <Step title="UI Updates">
+    Your player card moves to the selected team section.
+  </Step>
+</Steps>
+
+<Note>
+  You can switch teams freely in the lobby - team assignments only lock when the game starts.
+</Note>
+
+## Default Team Assignment
+
+When players join a room, they're automatically assigned to teams to ensure balance:
+
+```javascript
+const addUser = ({ socketId, roomId }) => {
+  const id = uuidv4();
+  // Assign to team based on current player count
+  const defaultTeam = getUsersInRoom(roomId).length % 2 + 1;
+  const user = { 
+    socketId, 
+    id, 
+    name: generateRandomName(), 
+    roomId, 
+    team: defaultTeam 
+  };
+  users.push(user);
+  return { user };
+}
+```
+
+- **Player 1** → Team 1
+- **Player 2** → Team 2  
+- **Player 3** → Team 1
+- **Player 4** → Team 2
+
+This ensures a 2v2 split by default, though players can switch teams if desired.
+
+## Player Cards
+
+Each player appears as a card in their team's section:
+
+```tsx
+{users
+  .filter((user) => user.team === 1)
+  .map((user) => (
+    <PlayerCard
+      name={user.name}
+      isUser={user.id == storedUserId}
+      key={user.id}
+    />
+  ))}
+```
+
+Your own player card is visually distinguished from others.
+
+## Changing Your Name
+
+Players start with randomly generated names but can customize them:
+
+<Steps>
+  <Step title="Enter New Name">
+    Type your desired name in the "Enter your name" text field.
+
+    ```tsx
+    <TextField
+      label="Enter your name"
+      value={newName}
+      onChange={(e) => setNewName(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          handleChangeName();
+        }
+      }}
+    />
+    ```
+  </Step>
+
+  <Step title="Submit Name">
+    Click "Change Name" or press Enter.
+  </Step>
+
+  <Step title="Server Updates">
+    The server broadcasts your new name to all players.
+
+    ```javascript
+    socket.on("changeName", ({userId, name}) => {
+      const user = getUser(userId);
+      if (!user) return;
+      
+      user.name = name;
+      io.to(user.roomId).emit("users", getUsersInRoom(user.roomId));
+    })
+    ```
+  </Step>
+
+  <Step title="Name Updates">
+    Your new name appears on your player card and in the participant list.
+  </Step>
+</Steps>
+
+## Random Name Generation
+
+New players receive randomly generated names combining adjectives and animals:
+
+```javascript
+const generateRandomName = () => {
+  const adjectives = ["Swift", "Brave", "Clever", "Mighty", "Witty"];
+  const animals = ["Tiger", "Falcon", "Panda", "Eagle", "Shark"];
+  return (
+    adjectives[Math.floor(Math.random() * adjectives.length)] +
+    animals[Math.floor(Math.random() * animals.length)]
+  );
+};
+```
+
+Examples: `SwiftTiger`, `BraveFalcon`, `CleverPanda`
+
+## Starting the Game
+
+The "Start Game" button is available to any player, but the server enforces requirements:
+
+```javascript
+socket.on("startGame", ({roomId}, callback) => {
+  const room = getUsersInRoom(roomId);
+
+  // Require exactly 4 players
+  if (room.length != 4) {
+    return callback({error: "Incorrect Number of people in room!"});
+  }
+
+  initializeRoom(roomId)
+  sendGameState(roomId);
+  callback({gameState : getRoom(roomId)});
+})
+```
+
+<Note>
+  **The game requires exactly 4 players to start.** If you have fewer or more than 4 players, you'll see an error message.
+</Note>
+
+## Team Partnerships
+
+In Yokai Septet, teammates sit across from each other:
+
+```
+    Player 2
+       |
+Player 1 - Player 3
+       |
+    Player 4
+```
+
+- **Team 1**: Player 1 & Player 3 (opposite sides)
+- **Team 2**: Player 2 & Player 4 (opposite sides)
+
+This positioning allows partners to coordinate while preventing direct communication.
+
+## Team Display During Game
+
+Once the game starts, team rosters are displayed in the room info panel:
+
+```tsx
+<Typography variant="body1">
+  Team 1: {gameContext.playerNames
+    .filter((u, i) => !((i + gameContext.userIndex) % 2))
+    .join(", ")}
+</Typography>
+<Typography variant="body1">
+  Team 2: {gameContext.playerNames
+    .filter((u, i) => (i + gameContext.userIndex) % 2)
+    .join(", ")}
+</Typography>
+```
+
+<CardGroup cols={2}>
+  <Card title="Team Coordination" icon="handshake">
+    Partners can use the card swap phase to exchange cards and signal their hands.
+  </Card>
+
+  <Card title="Shared Score" icon="trophy">
+    Teams share a score - tricks won by either partner count toward the team total.
+  </Card>
+</CardGroup>

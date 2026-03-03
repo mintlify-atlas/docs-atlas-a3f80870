@@ -1,0 +1,332 @@
+---
+title: Client Setup
+description: Setting up the React client for local development
+---
+
+## Prerequisites
+
+Before setting up the client, ensure you have the following installed:
+
+- **Node.js** (v18 or higher recommended)
+- **npm** (comes with Node.js)
+- **Git** (for cloning the repository)
+
+## Clone the Repository
+
+First, clone the Yokai Septet Online repository:
+
+```bash
+git clone <repository-url>
+cd yokai-septet-online
+```
+
+## Install Dependencies
+
+Navigate to the client directory and install all required packages:
+
+<Steps>
+  <Step title="Navigate to client directory">
+    ```bash
+    cd client
+    ```
+  </Step>
+  
+  <Step title="Install packages">
+    ```bash
+    npm install
+    ```
+    
+    This will install all dependencies listed in `package.json`:
+    
+    - React and React DOM
+    - TypeScript
+    - Vite and plugins
+    - Material-UI components
+    - Socket.io client
+    - React Router
+    - ESLint and development tools
+  </Step>
+</Steps>
+
+## Project Structure
+
+After installation, your client directory should look like this:
+
+```plaintext
+client/
+├── node_modules/         # Installed dependencies
+├── public/               # Static assets
+├── src/                  # Source code
+│   ├── assets/          # Images, fonts, etc.
+│   ├── pages/           # Page components
+│   │   ├── Home/       # Landing page
+│   │   ├── Room/       # Room/lobby pages
+│   │   └── Game/       # Game components
+│   ├── providers/       # React context providers
+│   │   ├── SocketProvider.tsx
+│   │   ├── UserProvider.tsx
+│   │   ├── GameProvider.tsx
+│   │   └── MainProvider.tsx
+│   ├── utils/           # Utility functions
+│   ├── types.ts         # TypeScript type definitions
+│   ├── main.tsx         # Application entry point
+│   └── style.css        # Global styles
+├── index.html           # HTML template
+├── package.json         # Dependencies and scripts
+├── tsconfig.json        # TypeScript configuration
+├── vite.config.ts       # Vite configuration
+└── eslint.config.js     # ESLint configuration
+```
+
+## Development Scripts
+
+The client includes several npm scripts defined in `package.json`:
+
+<CodeGroup>
+```json package.json
+{
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  }
+}
+```
+</CodeGroup>
+
+### Available Commands
+
+<Tabs>
+  <Tab title="dev">
+    Start the development server with hot module replacement:
+    
+    ```bash
+    npm run dev
+    ```
+    
+    - Server runs on `http://localhost:5173` (default Vite port)
+    - Automatically reloads on file changes
+    - Shows build errors in the browser
+    - Enables React DevTools
+  </Tab>
+  
+  <Tab title="build">
+    Create a production build:
+    
+    ```bash
+    npm run build
+    ```
+    
+    - Runs TypeScript compiler (`tsc -b`)
+    - Bundles code with Vite
+    - Minifies and optimizes assets
+    - Outputs to `dist/` directory
+  </Tab>
+  
+  <Tab title="lint">
+    Run ESLint to check code quality:
+    
+    ```bash
+    npm run lint
+    ```
+    
+    - Checks for code style issues
+    - Identifies potential bugs
+    - Enforces React best practices
+  </Tab>
+  
+  <Tab title="preview">
+    Preview the production build locally:
+    
+    ```bash
+    npm run preview
+    ```
+    
+    - Serves the `dist/` directory
+    - Tests production build before deployment
+  </Tab>
+</Tabs>
+
+## Running the Development Server
+
+<Steps>
+  <Step title="Start the server">
+    Make sure the backend server is running first (see [Server Setup](/development/server-setup)).
+  </Step>
+  
+  <Step title="Start the client">
+    In the `client` directory, run:
+    
+    ```bash
+    npm run dev
+    ```
+  </Step>
+  
+  <Step title="Open in browser">
+    Navigate to `http://localhost:5173` in your web browser.
+  </Step>
+  
+  <Step title="Verify connection">
+    Check the browser console for Socket.io connection messages. You should see a successful WebSocket connection to `ws://localhost:3002`.
+  </Step>
+</Steps>
+
+## Configuration
+
+### Vite Configuration
+
+The Vite configuration is minimal and located in `vite.config.ts`:
+
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+})
+```
+
+### TypeScript Configuration
+
+TypeScript is configured with three config files:
+
+- `tsconfig.json` - Base configuration
+- `tsconfig.app.json` - Application code settings
+- `tsconfig.node.json` - Build tool settings
+
+### Socket.io Server URL
+
+The client connects to the server at `ws://localhost:3002` by default. This is configured in `src/providers/SocketProvider.tsx`:
+
+```typescript
+const socket = io("ws://localhost:3002", {
+  transports: ["websocket", "polling"],
+});
+```
+
+<Warning>
+  For production deployment, update this URL to your production server address.
+</Warning>
+
+## Development Tips
+
+### Hot Module Replacement (HMR)
+
+Vite provides fast HMR out of the box. When you save changes to your code:
+
+- React components update instantly without full page reload
+- Component state is preserved when possible
+- CSS changes apply immediately
+
+### React DevTools
+
+Install the [React DevTools](https://react.dev/learn/react-developer-tools) browser extension for debugging:
+
+- Inspect component hierarchy
+- View component props and state
+- Track re-renders and performance
+
+### TypeScript IntelliSense
+
+Use a TypeScript-aware editor like VS Code for:
+
+- Auto-completion
+- Type checking
+- Inline error messages
+- Go-to-definition navigation
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port 5173 already in use">
+    If another application is using port 5173:
+    
+    ```bash
+    # Kill the process using the port (Linux/Mac)
+    lsof -ti:5173 | xargs kill -9
+    
+    # Or specify a different port
+    npm run dev -- --port 3000
+    ```
+  </Accordion>
+  
+  <Accordion title="Socket.io connection failed">
+    Ensure the server is running on port 3002:
+    
+    ```bash
+    # In the server directory
+    npm run dev
+    ```
+    
+    Check browser console for specific error messages.
+  </Accordion>
+  
+  <Accordion title="Module not found errors">
+    Delete `node_modules` and reinstall:
+    
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+  </Accordion>
+  
+  <Accordion title="TypeScript errors">
+    Ensure TypeScript is properly installed:
+    
+    ```bash
+    npm install -D typescript
+    ```
+    
+    Check that all type definitions are installed (they should be in `devDependencies`).
+  </Accordion>
+</AccordionGroup>
+
+## Building for Production
+
+When ready to deploy:
+
+<Steps>
+  <Step title="Run the build command">
+    ```bash
+    npm run build
+    ```
+  </Step>
+  
+  <Step title="Check the output">
+    Build artifacts will be in the `dist/` directory:
+    
+    ```plaintext
+    dist/
+    ├── assets/       # Bundled JS and CSS
+    ├── index.html    # Entry HTML file
+    └── ...           # Other static assets
+    ```
+  </Step>
+  
+  <Step title="Test locally (optional)">
+    ```bash
+    npm run preview
+    ```
+  </Step>
+  
+  <Step title="Deploy">
+    Upload the `dist/` directory to your hosting service (Vercel, Netlify, etc.).
+  </Step>
+</Steps>
+
+<Warning>
+  Remember to update the Socket.io server URL in `SocketProvider.tsx` to your production server before building.
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Server Setup" icon="server" href="/development/server-setup">
+    Set up the backend server
+  </Card>
+  
+  <Card title="Architecture" icon="sitemap" href="/development/architecture">
+    Learn about the system architecture
+  </Card>
+</CardGroup>

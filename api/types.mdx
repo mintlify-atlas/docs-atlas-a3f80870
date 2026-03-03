@@ -1,0 +1,336 @@
+---
+title: 'TypeScript Types'
+description: 'Type definitions for Yokai Septet Online'
+---
+
+## Overview
+
+TypeScript types and interfaces used throughout Yokai Septet Online for type safety and data structure documentation.
+
+## Enums
+
+### Suit
+
+Represents the seven suits in Yokai Septet.
+
+```typescript
+enum Suit {
+  Green = "GREEN",
+  Purple = "PURPLE",
+  Pink = "PINK",
+  Yellow = "YELLOW",
+  Black = "BLACK",
+  Red = "RED",
+  Blue = "BLUE"
+}
+```
+
+<Expandable title="Suit Values">
+  <ResponseField name="Green" type="string" default="GREEN">
+    First suit (cards 1-7)
+  </ResponseField>
+  
+  <ResponseField name="Purple" type="string" default="PURPLE">
+    Second suit (cards 8-14)
+  </ResponseField>
+  
+  <ResponseField name="Pink" type="string" default="PINK">
+    Third suit (cards 15-21)
+  </ResponseField>
+  
+  <ResponseField name="Yellow" type="string" default="YELLOW">
+    Fourth suit (cards 22-28)
+  </ResponseField>
+  
+  <ResponseField name="Black" type="string" default="BLACK">
+    Fifth suit (cards 29-35)
+  </ResponseField>
+  
+  <ResponseField name="Red" type="string" default="RED">
+    Sixth suit (cards 36-42)
+  </ResponseField>
+  
+  <ResponseField name="Blue" type="string" default="BLUE">
+    Seventh suit (cards 43-49)
+  </ResponseField>
+</Expandable>
+
+### suitToColorClass
+
+Mapping of suits to their color values for UI rendering.
+
+```typescript
+const suitToColorClass = {
+  [Suit.Green]: "#29a600",
+  [Suit.Purple]: "#790699",
+  [Suit.Pink]: "Pink",
+  [Suit.Yellow]: "Yellow",
+  [Suit.Black]: "#575656",
+  [Suit.Red]: "#b80f0f",
+  [Suit.Blue]: "#16cade"
+}
+```
+
+<Expandable title="Color Values">
+  <ResponseField name="Green" type="string" default="#29a600">
+    Hex color for green suit
+  </ResponseField>
+  
+  <ResponseField name="Purple" type="string" default="#790699">
+    Hex color for purple suit
+  </ResponseField>
+  
+  <ResponseField name="Pink" type="string" default="Pink">
+    Named color for pink suit
+  </ResponseField>
+  
+  <ResponseField name="Yellow" type="string" default="Yellow">
+    Named color for yellow suit
+  </ResponseField>
+  
+  <ResponseField name="Black" type="string" default="#575656">
+    Hex color for black suit
+  </ResponseField>
+  
+  <ResponseField name="Red" type="string" default="#b80f0f">
+    Hex color for red suit
+  </ResponseField>
+  
+  <ResponseField name="Blue" type="string" default="#16cade">
+    Hex color for blue suit
+  </ResponseField>
+</Expandable>
+
+## Types
+
+### Message
+
+Represents a chat message in the game.
+
+```typescript
+type Message = {
+  text: string;
+  user: string;
+}
+```
+
+<ResponseField name="text" type="string" required>
+  The message content
+</ResponseField>
+
+<ResponseField name="user" type="string" required>
+  Username of the message sender
+</ResponseField>
+
+**Example:**
+```typescript
+const message: Message = {
+  text: "Good game!",
+  user: "Player1"
+}
+```
+
+### User
+
+Represents a user in the game lobby or room.
+
+```typescript
+type User = {
+  id: string;
+  name: string;
+  roomId: string;
+  team: number;
+}
+```
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the user
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name of the user
+</ResponseField>
+
+<ResponseField name="roomId" type="string" required>
+  ID of the room the user is currently in
+</ResponseField>
+
+<ResponseField name="team" type="number" required>
+  Team assignment (0 = no team, 1 = team 1, 2 = team 2)
+</ResponseField>
+
+**Example:**
+```typescript
+const user: User = {
+  id: "user123",
+  name: "Alice",
+  roomId: "room456",
+  team: 1
+}
+```
+
+## Interfaces
+
+### GameState
+
+Represents the complete game state for a room.
+
+```typescript
+interface GameState {
+  users: UsersEntity[];
+  trumpCard: number;
+  state: string;
+  leadPlayer: number;
+  turn: number;
+  scores: number[];
+}
+```
+
+<ResponseField name="users" type="UsersEntity[]" required>
+  Array of all players in the game with their complete state
+</ResponseField>
+
+<ResponseField name="trumpCard" type="number" required>
+  The trump card for the current round (1-49, or 0 if not set)
+</ResponseField>
+
+<ResponseField name="state" type="string" required>
+  Current game phase: "lobby", "cardSwap", "inGame", or "end"
+</ResponseField>
+
+<ResponseField name="leadPlayer" type="number" required>
+  Index of the player leading the current trick (-1 if not set)
+</ResponseField>
+
+<ResponseField name="turn" type="number" required>
+  Current turn offset from lead player (0-3, or 4 when trick complete)
+</ResponseField>
+
+<ResponseField name="scores" type="number[]" required>
+  Array of two team scores [team1Score, team2Score]
+</ResponseField>
+
+**Example:**
+```typescript
+const gameState: GameState = {
+  users: [
+    // UsersEntity objects
+  ],
+  trumpCard: 25,
+  state: "inGame",
+  leadPlayer: 0,
+  turn: 2,
+  scores: [3, 1]
+}
+```
+
+### UsersEntity
+
+Represents a player's complete state within a game.
+
+```typescript
+interface UsersEntity {
+  id: string;
+  name: string;
+  toSwap: number[];
+  cardPlayed: number;
+  hand: number[];
+  team: number;
+  tricksWon: number[][];
+}
+```
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the user
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Display name of the player
+</ResponseField>
+
+<ResponseField name="toSwap" type="number[]" required>
+  Array of 3 card numbers selected for swapping (empty if not yet selected)
+</ResponseField>
+
+<ResponseField name="cardPlayed" type="number" required>
+  Card number currently played in the trick (0 if no card played)
+</ResponseField>
+
+<ResponseField name="hand" type="number[]" required>
+  Array of card numbers in player's hand (sorted ascending)
+</ResponseField>
+
+<ResponseField name="team" type="number" required>
+  Team assignment (0 = no team, 1 = team 1, 2 = team 2)
+</ResponseField>
+
+<ResponseField name="tricksWon" type="number[][]" required>
+  Array of tricks won, where each trick is an array of 4 card numbers
+</ResponseField>
+
+**Example:**
+```typescript
+const player: UsersEntity = {
+  id: "user123",
+  name: "Alice",
+  toSwap: [5, 12, 23],
+  cardPlayed: 0,
+  hand: [1, 7, 14, 21, 28, 35, 42, 49],
+  team: 1,
+  tricksWon: [
+    [1, 8, 15, 22],
+    [7, 14, 21, 28]
+  ]
+}
+```
+
+## Card Representation
+
+Cards are represented as numbers from 1-49:
+
+<Expandable title="Card Number System">
+  **Card Numbering:**
+  - 0: Empty/no card
+  - 1-7: Green suit (1=Ace, 7=Seven)
+  - 8-14: Purple suit
+  - 15-21: Pink suit
+  - 22-28: Yellow suit
+  - 29-35: Black suit
+  - 36-42: Red suit
+  - 43-49: Blue suit
+
+  **Special Cards:**
+  - Card 1: Green Ace (always wins tricks)
+  - Card 49: Blue 7 (highest card, leads first trick if no Ace)
+  - Cards ending in 7 (7, 14, 21, 28, 35, 42, 49): Sevens (scoring cards)
+
+  **Formulas:**
+  ```javascript
+  // Get suit (1-7)
+  suit = Math.floor((card - 1) / 7) + 1
+
+  // Get rank (1-7 within suit)
+  rank = card - 6 * (suit - 1)
+  ```
+</Expandable>
+
+## State Flow
+
+<Expandable title="Game State Transitions">
+  **State Progression:**
+  
+  1. **lobby**: Initial state when room is created
+     - Players join and select teams
+     - Transitions to "cardSwap" when `startGame()` called
+  
+  2. **cardSwap**: Card swapping phase
+     - Each player selects 3 cards to swap with partner
+     - Transitions to "inGame" when all swaps complete
+  
+  3. **inGame**: Active gameplay
+     - Players play cards in tricks
+     - Transitions back to "cardSwap" when round ends
+  
+  4. **end**: Game completed
+     - One team has won overall
+</Expandable>
