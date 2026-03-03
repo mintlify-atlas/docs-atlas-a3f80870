@@ -1,0 +1,65 @@
+{
+  "projectType": "saas",
+  "projectName": "Yokai Septet Online",
+  "projectDescription": "A real-time multiplayer online card game implementation of Yokai Septet, a trick-taking game for 4 players in 2 teams.",
+  "theme": "palm",
+  "primaryColor": "#790699",
+  "lightColor": "#16cade",
+  "darkColor": "#575656",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Game Rules",
+            "pages": ["rules/overview", "rules/card-suits", "rules/gameplay-phases", "rules/scoring"]
+          },
+          {
+            "group": "Features",
+            "pages": ["features/multiplayer", "features/rooms", "features/teams", "features/reconnection"]
+          },
+          {
+            "group": "Development",
+            "pages": ["development/architecture", "development/client-setup", "development/server-setup", "development/contributing"]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Socket Events",
+            "pages": ["api/client-events", "api/server-events"]
+          },
+          {
+            "group": "Game State",
+            "pages": ["api/game-state", "api/types"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Real-time multiplayer gameplay with Socket.io",
+    "Room-based game sessions with unique join codes",
+    "Team selection and lobby system",
+    "Card swapping phase with partner exchange",
+    "Turn-based trick-taking gameplay",
+    "Trump card mechanics",
+    "Automatic scoring across rounds",
+    "Player reconnection support"
+  ],
+  "publicApiSurface": [
+    "Socket.io Events: create, join, startGame, playCard, swapCards",
+    "Socket.io Events: changeTeam, changeName, sendMessage, leaveRoom, reconnect",
+    "GameState class with game logic methods",
+    "React components: Home, Lobby, Game, Card, CardHolder",
+    "Context providers: SocketProvider, GameProvider, UserProvider",
+    "Card helper utilities: getSuit, getRank, evaluateTrick"
+  ]
+}
